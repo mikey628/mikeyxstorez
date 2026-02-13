@@ -39,18 +39,20 @@ const Auth = () => {
         navigate("/dashboard");
       }
     } else {
-      const { error } = await supabase.auth.signUp({
+      const { data: signUpData, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          emailRedirectTo: window.location.origin,
           data: { display_name: displayName },
         },
       });
       if (error) {
         toast.error(error.message);
+      } else if (signUpData.session) {
+        toast.success("Account created! Welcome!");
+        navigate("/dashboard");
       } else {
-        toast.success("Account created! Check your email to verify.");
+        toast.success("Account created! You can now sign in.");
       }
     }
     setLoading(false);
