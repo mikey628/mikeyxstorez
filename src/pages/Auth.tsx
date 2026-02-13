@@ -31,15 +31,30 @@ const Auth = () => {
     }
 
     if (isLogin) {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      const { data: signInData, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) {
         toast.error(error.message);
-      } else {
-        toast.success("Logged in successfully!");
-        navigate("/dashboard");
+      } else if (signInData.user) {
+        // Check if user is approved
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("is_approved, is_banned")
+          .eq("user_id", signInData.user.id)
+          .single();
+
+        if (profile?.is_banned) {
+          await supabase.auth.signOut();
+          toast.error("Your account has been banned.");
+        } else if (!profile?.is_approved) {
+          await supabase.auth.signOut();
+          toast.error("Your account is pending approval. Please wait for admin to approve your login.");
+        } else {
+          toast.success("Logged in successfully!");
+          navigate("/dashboard");
+        }
       }
     } else {
-      const { data: signUpData, error } = await supabase.auth.signUp({
+      const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -48,11 +63,9 @@ const Auth = () => {
       });
       if (error) {
         toast.error(error.message);
-      } else if (signUpData.session) {
-        toast.success("Account created! Welcome!");
-        navigate("/dashboard");
       } else {
-        toast.success("Account created! You can now sign in.");
+        toast.success("Account created! Please wait for admin approval before logging in.");
+        setIsLogin(true);
       }
     }
     setLoading(false);

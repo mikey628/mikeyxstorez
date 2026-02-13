@@ -17,6 +17,7 @@ export type Database = {
       keys: {
         Row: {
           created_at: string
+          duration_days: number | null
           id: string
           is_used: boolean
           key_code: string
@@ -26,6 +27,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          duration_days?: number | null
           id?: string
           is_used?: boolean
           key_code: string
@@ -35,6 +37,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          duration_days?: number | null
           id?: string
           is_used?: boolean
           key_code?: string
@@ -56,6 +59,8 @@ export type Database = {
         Row: {
           created_at: string
           description: string | null
+          duration_days: number[] | null
+          file_url: string | null
           id: string
           name: string
           price_points: number
@@ -65,6 +70,8 @@ export type Database = {
         Insert: {
           created_at?: string
           description?: string | null
+          duration_days?: number[] | null
+          file_url?: string | null
           id?: string
           name: string
           price_points: number
@@ -74,6 +81,8 @@ export type Database = {
         Update: {
           created_at?: string
           description?: string | null
+          duration_days?: number[] | null
+          file_url?: string | null
           id?: string
           name?: string
           price_points?: number
@@ -88,7 +97,9 @@ export type Database = {
           display_name: string | null
           email: string
           id: string
+          is_approved: boolean
           is_banned: boolean
+          photo_url: string | null
           total_purchases: number
           updated_at: string
           user_id: string
@@ -99,7 +110,9 @@ export type Database = {
           display_name?: string | null
           email: string
           id?: string
+          is_approved?: boolean
           is_banned?: boolean
+          photo_url?: string | null
           total_purchases?: number
           updated_at?: string
           user_id: string
@@ -110,7 +123,9 @@ export type Database = {
           display_name?: string | null
           email?: string
           id?: string
+          is_approved?: boolean
           is_banned?: boolean
+          photo_url?: string | null
           total_purchases?: number
           updated_at?: string
           user_id?: string

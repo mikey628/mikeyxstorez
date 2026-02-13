@@ -16,15 +16,12 @@ Deno.serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const authHeader = req.headers.get("Authorization")!;
 
-    // User client (respects RLS)
     const userClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
       global: { headers: { Authorization: authHeader } },
     });
 
-    // Admin client (bypasses RLS)
     const adminClient = createClient(supabaseUrl, supabaseKey);
 
-    // Get current user
     const { data: { user }, error: authError } = await userClient.auth.getUser();
     if (authError || !user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -32,17 +29,17 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { product_id } = await req.json();
+    const { product_id, duration_days } = await req.json();
     if (!product_id) {
       return new Response(JSON.stringify({ error: "Product ID required" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Check if user is banned
+    // Check profile
     const { data: profile } = await adminClient
       .from("profiles")
-      .select("wallet_points, is_banned")
+      .select("wallet_points, is_banned, is_approved")
       .eq("user_id", user.id)
       .single();
 
@@ -54,6 +51,12 @@ Deno.serve(async (req) => {
 
     if (profile.is_banned) {
       return new Response(JSON.stringify({ error: "Your account is banned" }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (!profile.is_approved) {
+      return new Response(JSON.stringify({ error: "Your account is not approved yet" }), {
         status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -83,7 +86,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Find an available key - use FOR UPDATE to prevent race conditions
+    // Find available key
     const { data: availableKey } = await adminClient
       .from("keys")
       .select("*")
@@ -98,12 +101,17 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Mark key as used
+    // Mark key as used with duration
     const { error: keyError } = await adminClient
       .from("keys")
-      .update({ is_used: true, used_by: user.id, used_at: new Date().toISOString() })
+      .update({ 
+        is_used: true, 
+        used_by: user.id, 
+        used_at: new Date().toISOString(),
+        duration_days: duration_days || 30,
+      })
       .eq("id", availableKey.id)
-      .eq("is_used", false); // Extra safety check
+      .eq("is_used", false);
 
     if (keyError) {
       return new Response(JSON.stringify({ error: "Failed to claim key, try again" }), {
@@ -112,11 +120,17 @@ Deno.serve(async (req) => {
     }
 
     // Deduct points
+    const { data: currentProfile } = await adminClient
+      .from("profiles")
+      .select("total_purchases")
+      .eq("user_id", user.id)
+      .single();
+
     await adminClient
       .from("profiles")
       .update({
         wallet_points: profile.wallet_points - product.price_points,
-        total_purchases: (await adminClient.from("profiles").select("total_purchases").eq("user_id", user.id).single()).data!.total_purchases + 1,
+        total_purchases: (currentProfile?.total_purchases || 0) + 1,
       })
       .eq("user_id", user.id);
 
@@ -131,7 +145,7 @@ Deno.serve(async (req) => {
       user_id: user.id,
       type: "purchase",
       amount: product.price_points,
-      description: `Purchased ${product.name}`,
+      description: `Purchased ${product.name} (${duration_days || 30} days)`,
       product_id: product_id,
       key_id: availableKey.id,
     });

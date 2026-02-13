@@ -9,12 +9,13 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Package, Coins, ShoppingCart } from "lucide-react";
+import { Package, Coins, ShoppingCart, Clock, FileDown } from "lucide-react";
 
 const Products = () => {
   const { user, profile, refreshProfile } = useAuth();
   const [products, setProducts] = useState<any[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
+  const [selectedDuration, setSelectedDuration] = useState<number>(30);
   const [purchasing, setPurchasing] = useState(false);
   const [deliveredKey, setDeliveredKey] = useState<string | null>(null);
 
@@ -27,6 +28,12 @@ const Products = () => {
     fetchProducts();
   }, []);
 
+  const openPurchaseDialog = (product: any) => {
+    setSelectedProduct(product);
+    setSelectedDuration((product.duration_days || [30])[0]);
+    setDeliveredKey(null);
+  };
+
   const handlePurchase = async () => {
     if (!user || !selectedProduct) return;
     if ((profile?.wallet_points ?? 0) < selectedProduct.price_points) {
@@ -37,7 +44,7 @@ const Products = () => {
 
     try {
       const { data, error } = await supabase.functions.invoke("purchase-key", {
-        body: { product_id: selectedProduct.id },
+        body: { product_id: selectedProduct.id, duration_days: selectedDuration },
       });
       if (error) throw error;
       if (data.error) throw new Error(data.error);
@@ -89,6 +96,16 @@ const Products = () => {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <p className="text-sm text-muted-foreground">{product.description || "No description."}</p>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Clock className="w-3 h-3" />
+                    Duration: {(product.duration_days || [30]).join(", ")} days
+                  </div>
+                  {product.file_url && (
+                    <div className="flex items-center gap-1 text-xs text-primary">
+                      <FileDown className="w-3 h-3" />
+                      Includes downloadable file
+                    </div>
+                  )}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1 text-primary font-bold">
                       <Coins className="w-4 h-4" />
@@ -97,7 +114,7 @@ const Products = () => {
                     <Button
                       size="sm"
                       disabled={product.stock <= 0}
-                      onClick={() => setSelectedProduct(product)}
+                      onClick={() => openPurchaseDialog(product)}
                     >
                       <ShoppingCart className="w-4 h-4 mr-1" />
                       Buy Now
@@ -116,7 +133,7 @@ const Products = () => {
               <DialogDescription>
                 {deliveredKey
                   ? "Here is your access key. Copy it now — it won't be shown again."
-                  : `You are about to purchase ${selectedProduct?.name} for ${selectedProduct?.price_points} points.`}
+                  : `You are about to purchase ${selectedProduct?.name}.`}
               </DialogDescription>
             </DialogHeader>
             {deliveredKey ? (
@@ -124,17 +141,45 @@ const Products = () => {
                 <div className="bg-secondary p-4 rounded-lg font-mono text-sm break-all select-all text-center">
                   {deliveredKey}
                 </div>
-                <Button className="w-full mt-4" onClick={() => { navigator.clipboard.writeText(deliveredKey); toast.success("Copied!"); }}>
+                {selectedProduct?.file_url && (
+                  <a href={selectedProduct.file_url} target="_blank" rel="noopener noreferrer">
+                    <Button variant="outline" className="w-full mt-2">
+                      <FileDown className="w-4 h-4 mr-1" /> Download File
+                    </Button>
+                  </a>
+                )}
+                <Button className="w-full mt-2" onClick={() => { navigator.clipboard.writeText(deliveredKey); toast.success("Copied!"); }}>
                   Copy Key
                 </Button>
               </div>
             ) : (
               <>
-                <div className="py-4 space-y-2 text-sm">
-                  <div className="flex justify-between"><span className="text-muted-foreground">Product:</span><span>{selectedProduct?.name}</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">Price:</span><span>{selectedProduct?.price_points} pts</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">Your Balance:</span><span>{profile?.wallet_points ?? 0} pts</span></div>
-                  <div className="flex justify-between font-medium"><span>After Purchase:</span><span>{(profile?.wallet_points ?? 0) - (selectedProduct?.price_points ?? 0)} pts</span></div>
+                <div className="py-4 space-y-3">
+                  {/* Duration selector */}
+                  {(selectedProduct?.duration_days || [30]).length > 1 && (
+                    <div>
+                      <label className="text-sm text-muted-foreground mb-2 block">Select Duration</label>
+                      <div className="flex gap-2 flex-wrap">
+                        {(selectedProduct?.duration_days || [30]).map((d: number) => (
+                          <Button
+                            key={d}
+                            variant={selectedDuration === d ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setSelectedDuration(d)}
+                          >
+                            {d} Days
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between"><span className="text-muted-foreground">Product:</span><span>{selectedProduct?.name}</span></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">Duration:</span><span>{selectedDuration} days</span></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">Price:</span><span>{selectedProduct?.price_points} pts</span></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">Your Balance:</span><span>{profile?.wallet_points ?? 0} pts</span></div>
+                    <div className="flex justify-between font-medium"><span>After Purchase:</span><span>{(profile?.wallet_points ?? 0) - (selectedProduct?.price_points ?? 0)} pts</span></div>
+                  </div>
                 </div>
                 <DialogFooter>
                   <Button variant="outline" onClick={closeDialog}>Cancel</Button>

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { DashboardLayout } from "@/components/DashboardLayout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -12,8 +12,8 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import {
-  Users, Package, Key, History, Plus, Trash2, Edit, Search,
-  Coins, Download, Ban, Shield,
+  Users, Package, Key, Plus, Trash2, Edit, Search,
+  Coins, Download, Ban, Shield, CheckCircle, XCircle, Upload,
 } from "lucide-react";
 import { Navigate } from "react-router-dom";
 
@@ -29,7 +29,8 @@ const Admin = () => {
   // Product dialog
   const [productDialog, setProductDialog] = useState(false);
   const [editProduct, setEditProduct] = useState<any>(null);
-  const [productForm, setProductForm] = useState({ name: "", description: "", price_points: 0 });
+  const [productForm, setProductForm] = useState({ name: "", description: "", price_points: 0, duration_days: "30" });
+  const [productFile, setProductFile] = useState<File | null>(null);
 
   // Key dialog
   const [keyDialog, setKeyDialog] = useState(false);
@@ -38,8 +39,10 @@ const Admin = () => {
 
   // Points dialog
   const [pointsDialog, setPointsDialog] = useState(false);
-  const [pointsEmail, setPointsEmail] = useState("");
+  const [pointsUserId, setPointsUserId] = useState("");
+  const [pointsUserEmail, setPointsUserEmail] = useState("");
   const [pointsAmount, setPointsAmount] = useState(0);
+  const [pointsMode, setPointsMode] = useState<"add" | "set">("set");
 
   const fetchAll = async () => {
     const [{ count: userCount }, { data: prods }, { data: txns }, { data: allKeys }, { data: allUsers }] = await Promise.all([
@@ -70,16 +73,36 @@ const Admin = () => {
 
   // Product CRUD
   const saveProduct = async () => {
+    const durationDays = productForm.duration_days.split(",").map(d => parseInt(d.trim())).filter(d => !isNaN(d));
+    
+    let fileUrl = editProduct?.file_url || null;
+    if (productFile) {
+      const filePath = `products/${Date.now()}_${productFile.name}`;
+      const { error: uploadErr } = await supabase.storage.from("product-files").upload(filePath, productFile);
+      if (uploadErr) { toast.error("File upload failed"); return; }
+      const { data: { publicUrl } } = supabase.storage.from("product-files").getPublicUrl(filePath);
+      fileUrl = publicUrl;
+    }
+
+    const payload = { 
+      name: productForm.name, 
+      description: productForm.description, 
+      price_points: productForm.price_points,
+      duration_days: durationDays.length > 0 ? durationDays : [30],
+      file_url: fileUrl,
+    };
+
     if (editProduct) {
-      await supabase.from("products").update(productForm).eq("id", editProduct.id);
+      await supabase.from("products").update(payload).eq("id", editProduct.id);
       toast.success("Product updated");
     } else {
-      await supabase.from("products").insert({ ...productForm, stock: 0 });
+      await supabase.from("products").insert({ ...payload, stock: 0 });
       toast.success("Product created");
     }
     setProductDialog(false);
     setEditProduct(null);
-    setProductForm({ name: "", description: "", price_points: 0 });
+    setProductForm({ name: "", description: "", price_points: 0, duration_days: "30" });
+    setProductFile(null);
     fetchAll();
   };
 
@@ -95,29 +118,43 @@ const Admin = () => {
     if (!codes.length || !keyProductId) return;
     const rows = codes.map((key_code) => ({ product_id: keyProductId, key_code }));
     await supabase.from("keys").insert(rows);
-    // Update stock
-    await supabase.from("products").update({ stock: products.find(p => p.id === keyProductId)!.stock + codes.length }).eq("id", keyProductId);
+    const prod = products.find(p => p.id === keyProductId);
+    if (prod) {
+      await supabase.from("products").update({ stock: prod.stock + codes.length }).eq("id", keyProductId);
+    }
     toast.success(`${codes.length} keys added`);
     setKeyDialog(false);
     setKeysInput("");
     fetchAll();
   };
 
-  // Add points
-  const addPoints = async () => {
-    const target = users.find((u) => u.email === pointsEmail);
+  // Edit points
+  const editPoints = async () => {
+    const target = users.find((u) => u.user_id === pointsUserId);
     if (!target) { toast.error("User not found"); return; }
-    await supabase.from("profiles").update({ wallet_points: target.wallet_points + pointsAmount }).eq("user_id", target.user_id);
+    
+    const newPoints = pointsMode === "set" ? pointsAmount : target.wallet_points + pointsAmount;
+    await supabase.from("profiles").update({ wallet_points: newPoints }).eq("user_id", target.user_id);
     await supabase.from("transactions").insert({
       user_id: target.user_id,
       type: "point_added",
-      amount: pointsAmount,
-      description: `Admin added ${pointsAmount} points`,
+      amount: pointsMode === "set" ? newPoints - target.wallet_points : pointsAmount,
+      description: pointsMode === "set" 
+        ? `Admin set points to ${newPoints}` 
+        : `Admin added ${pointsAmount} points`,
     });
-    toast.success(`${pointsAmount} points added to ${pointsEmail}`);
+    toast.success(`Points updated for ${target.email}`);
     setPointsDialog(false);
-    setPointsEmail("");
+    setPointsUserId("");
+    setPointsUserEmail("");
     setPointsAmount(0);
+    fetchAll();
+  };
+
+  // Approve/reject user
+  const toggleApproval = async (u: any) => {
+    await supabase.from("profiles").update({ is_approved: !u.is_approved }).eq("user_id", u.user_id);
+    toast.success(u.is_approved ? "User access revoked" : "User approved!");
     fetchAll();
   };
 
@@ -185,10 +222,10 @@ const Admin = () => {
           {/* PRODUCTS TAB */}
           <TabsContent value="products" className="space-y-4">
             <div className="flex gap-2">
-              <Button onClick={() => { setEditProduct(null); setProductForm({ name: "", description: "", price_points: 0 }); setProductDialog(true); }}>
+              <Button onClick={() => { setEditProduct(null); setProductForm({ name: "", description: "", price_points: 0, duration_days: "30" }); setProductFile(null); setProductDialog(true); }}>
                 <Plus className="w-4 h-4 mr-1" /> Add Product
               </Button>
-              <Button variant="outline" onClick={() => { setKeyDialog(true); }}>
+              <Button variant="outline" onClick={() => setKeyDialog(true)}>
                 <Key className="w-4 h-4 mr-1" /> Add Keys
               </Button>
             </div>
@@ -198,10 +235,23 @@ const Admin = () => {
                   <CardContent className="p-4 flex items-center justify-between">
                     <div>
                       <p className="font-medium">{p.name}</p>
-                      <p className="text-xs text-muted-foreground">{p.price_points} pts · Stock: {p.stock}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {p.price_points} pts · Stock: {p.stock} · Days: {(p.duration_days || [30]).join(", ")}
+                        {p.file_url && " · 📎 File attached"}
+                      </p>
                     </div>
                     <div className="flex gap-1">
-                      <Button variant="ghost" size="icon" onClick={() => { setEditProduct(p); setProductForm({ name: p.name, description: p.description || "", price_points: p.price_points }); setProductDialog(true); }}>
+                      <Button variant="ghost" size="icon" onClick={() => { 
+                        setEditProduct(p); 
+                        setProductForm({ 
+                          name: p.name, 
+                          description: p.description || "", 
+                          price_points: p.price_points,
+                          duration_days: (p.duration_days || [30]).join(", "),
+                        }); 
+                        setProductFile(null);
+                        setProductDialog(true); 
+                      }}>
                         <Edit className="w-4 h-4" />
                       </Button>
                       <Button variant="ghost" size="icon" onClick={() => deleteProduct(p.id)}>
@@ -221,9 +271,6 @@ const Admin = () => {
                 <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input placeholder="Search users..." value={searchUser} onChange={(e) => setSearchUser(e.target.value)} className="pl-10" />
               </div>
-              <Button onClick={() => setPointsDialog(true)}>
-                <Coins className="w-4 h-4 mr-1" /> Add Points
-              </Button>
             </div>
             <div className="space-y-2">
               {filteredUsers.map((u) => (
@@ -233,12 +280,31 @@ const Admin = () => {
                       <div className="flex items-center gap-2">
                         <p className="font-medium">{u.display_name || u.email}</p>
                         {u.is_banned && <Badge variant="destructive">Banned</Badge>}
+                        {u.is_approved ? (
+                          <Badge className="bg-success/10 text-success border-0">Approved</Badge>
+                        ) : (
+                          <Badge variant="secondary">Pending</Badge>
+                        )}
                       </div>
                       <p className="text-xs text-muted-foreground">{u.email} · {u.wallet_points} pts · {u.total_purchases} purchases</p>
                     </div>
-                    <Button variant="ghost" size="icon" onClick={() => toggleBan(u)}>
-                      <Ban className={`w-4 h-4 ${u.is_banned ? "text-success" : "text-destructive"}`} />
-                    </Button>
+                    <div className="flex gap-1">
+                      <Button variant="ghost" size="icon" title="Edit Points" onClick={() => {
+                        setPointsUserId(u.user_id);
+                        setPointsUserEmail(u.email);
+                        setPointsAmount(u.wallet_points);
+                        setPointsMode("set");
+                        setPointsDialog(true);
+                      }}>
+                        <Coins className="w-4 h-4 text-primary" />
+                      </Button>
+                      <Button variant="ghost" size="icon" title={u.is_approved ? "Revoke Access" : "Approve"} onClick={() => toggleApproval(u)}>
+                        {u.is_approved ? <XCircle className="w-4 h-4 text-warning" /> : <CheckCircle className="w-4 h-4 text-success" />}
+                      </Button>
+                      <Button variant="ghost" size="icon" title={u.is_banned ? "Unban" : "Ban"} onClick={() => toggleBan(u)}>
+                        <Ban className={`w-4 h-4 ${u.is_banned ? "text-success" : "text-destructive"}`} />
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
               ))}
@@ -302,6 +368,16 @@ const Admin = () => {
               <Input placeholder="Product Name" value={productForm.name} onChange={(e) => setProductForm({ ...productForm, name: e.target.value })} />
               <Input placeholder="Description" value={productForm.description} onChange={(e) => setProductForm({ ...productForm, description: e.target.value })} />
               <Input type="number" placeholder="Price (Points)" value={productForm.price_points} onChange={(e) => setProductForm({ ...productForm, price_points: parseInt(e.target.value) || 0 })} />
+              <Input placeholder="Duration days (comma separated, e.g. 7, 30, 90)" value={productForm.duration_days} onChange={(e) => setProductForm({ ...productForm, duration_days: e.target.value })} />
+              <div>
+                <label className="text-sm text-muted-foreground mb-1 block">Product File (optional)</label>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" onClick={() => document.getElementById("product-file-input")?.click()}>
+                    <Upload className="w-4 h-4 mr-1" /> {productFile ? productFile.name : (editProduct?.file_url ? "Replace File" : "Upload File")}
+                  </Button>
+                  <input id="product-file-input" type="file" className="hidden" onChange={(e) => setProductFile(e.target.files?.[0] || null)} />
+                </div>
+              </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setProductDialog(false)}>Cancel</Button>
@@ -345,15 +421,23 @@ const Admin = () => {
         <Dialog open={pointsDialog} onOpenChange={setPointsDialog}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Add Points to User</DialogTitle>
+              <DialogTitle>Edit Points — {pointsUserEmail}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
-              <Input placeholder="User Email" value={pointsEmail} onChange={(e) => setPointsEmail(e.target.value)} />
-              <Input type="number" placeholder="Points Amount" value={pointsAmount} onChange={(e) => setPointsAmount(parseInt(e.target.value) || 0)} />
+              <div className="flex gap-2">
+                <Button variant={pointsMode === "set" ? "default" : "outline"} size="sm" onClick={() => setPointsMode("set")}>Set Points</Button>
+                <Button variant={pointsMode === "add" ? "default" : "outline"} size="sm" onClick={() => setPointsMode("add")}>Add Points</Button>
+              </div>
+              <Input 
+                type="number" 
+                placeholder={pointsMode === "set" ? "New point balance" : "Points to add"} 
+                value={pointsAmount} 
+                onChange={(e) => setPointsAmount(parseInt(e.target.value) || 0)} 
+              />
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setPointsDialog(false)}>Cancel</Button>
-              <Button onClick={addPoints}>Add Points</Button>
+              <Button onClick={editPoints}>{pointsMode === "set" ? "Set Points" : "Add Points"}</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
