@@ -2,7 +2,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
-import { Wallet, ShoppingCart, History, Package } from "lucide-react";
+import { NepalFlag } from "@/components/NepalFlag";
+import { Wallet, ShoppingCart, History, Package, User } from "lucide-react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
@@ -41,14 +42,39 @@ const Dashboard = () => {
     <DashboardLayout>
       <AnimatedBackground />
       <div className="space-y-6 relative z-10">
-        <div>
-          <h1 className="text-2xl font-bold">Welcome back, {profile?.display_name || profile?.email || "User"}!</h1>
-          <p className="text-muted-foreground">Here's your account overview.</p>
+        {/* Header with Nepal flag */}
+        <div className="flex items-center gap-3">
+          <NepalFlag className="w-8 h-10" />
+          <div>
+            <h1 className="text-2xl font-bold">Welcome back, {profile?.display_name || profile?.email || "User"}!</h1>
+            <p className="text-muted-foreground">Here's your account overview.</p>
+          </div>
         </div>
+
+        {/* Profile quick card */}
+        <Card className="border-border/50 bg-gradient-to-r from-primary/5 to-transparent cursor-pointer hover:border-primary/30 transition-all" onClick={() => navigate("/profile")}>
+          <CardContent className="p-4 flex items-center gap-4">
+            <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center overflow-hidden">
+              {profile?.photo_url ? (
+                <img src={profile.photo_url} alt="Avatar" className="w-full h-full object-cover" />
+              ) : (
+                <User className="w-6 h-6 text-primary" />
+              )}
+            </div>
+            <div className="flex-1">
+              <p className="font-medium">{profile?.display_name || profile?.email}</p>
+              <p className="text-xs text-muted-foreground">View & edit your profile →</p>
+            </div>
+            <div className="text-right">
+              <p className="text-lg font-bold text-primary">{profile?.wallet_points ?? 0}</p>
+              <p className="text-xs text-muted-foreground">Points</p>
+            </div>
+          </CardContent>
+        </Card>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {stats.map((stat) => (
-            <Card key={stat.label} className="border-border/50">
+            <Card key={stat.label} className="border-border/50 hover:border-primary/20 transition-all">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>

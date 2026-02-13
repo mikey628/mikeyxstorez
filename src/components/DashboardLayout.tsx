@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   LayoutDashboard, Package, History, ShoppingCart, LogOut,
-  Menu, X, Shield, MoreVertical, Wallet,
+  Menu, X, Shield, MoreVertical, Wallet, User,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,6 +16,7 @@ const navItems = [
   { label: "Products", icon: Package, path: "/products" },
   { label: "My Keys", icon: ShoppingCart, path: "/my-keys" },
   { label: "Transactions", icon: History, path: "/transactions" },
+  { label: "Profile", icon: User, path: "/profile" },
 ];
 
 export const DashboardLayout = ({ children }: { children: ReactNode }) => {
