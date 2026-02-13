@@ -1,6 +1,7 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DashboardLayout } from "@/components/DashboardLayout";
+import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { Wallet, ShoppingCart, History, Package } from "lucide-react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -38,7 +39,8 @@ const Dashboard = () => {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
+      <AnimatedBackground />
+      <div className="space-y-6 relative z-10">
         <div>
           <h1 className="text-2xl font-bold">Welcome back, {profile?.display_name || profile?.email || "User"}!</h1>
           <p className="text-muted-foreground">Here's your account overview.</p>
