@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { KeyRound, Mail, Lock, User } from "lucide-react";
+import { AnimatedBackground } from "@/components/AnimatedBackground";
+import { motion } from "framer-motion";
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -35,7 +37,6 @@ const Auth = () => {
       if (error) {
         toast.error(error.message);
       } else if (signInData.user) {
-        // Check if user is approved
         const { data: profile } = await supabase
           .from("profiles")
           .select("is_approved, is_banned")
@@ -72,87 +73,70 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md border-border/50">
-        <CardHeader className="text-center space-y-2">
-          <div className="mx-auto w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center mb-2">
-            <KeyRound className="w-6 h-6 text-primary" />
-          </div>
-          <CardTitle className="text-2xl font-bold">MICKEY OFFICIAL STORE</CardTitle>
-          <CardDescription>
-            {isForgot ? "Reset your password" : isLogin ? "Sign in to your account" : "Create a new account"}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleAuth} className="space-y-4">
-            {!isLogin && !isForgot && (
+    <div className="min-h-screen flex items-center justify-center bg-background p-4 relative overflow-hidden">
+      <AnimatedBackground />
+      <motion.div
+        initial={{ opacity: 0, y: 30, scale: 0.95 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.5, ease: "easeOut" }}
+        className="relative z-10 w-full max-w-md"
+      >
+        <Card className="border-border/50 bg-card/70 backdrop-blur-xl shadow-2xl shadow-primary/10">
+          <CardHeader className="text-center space-y-2">
+            <motion.div
+              className="mx-auto w-14 h-14 bg-primary/10 rounded-xl flex items-center justify-center mb-2 ring-2 ring-primary/20"
+              animate={{ boxShadow: ["0 0 0 0 hsl(262 83% 58% / 0)", "0 0 20px 5px hsl(262 83% 58% / 0.15)", "0 0 0 0 hsl(262 83% 58% / 0)"] }}
+              transition={{ duration: 3, repeat: Infinity }}
+            >
+              <KeyRound className="w-7 h-7 text-primary" />
+            </motion.div>
+            <CardTitle className="text-2xl font-bold">MICKEY OFFICIAL STORE</CardTitle>
+            <CardDescription>
+              {isForgot ? "Reset your password" : isLogin ? "Sign in to your account" : "Create a new account"}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleAuth} className="space-y-4">
+              {!isLogin && !isForgot && (
+                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="relative">
+                  <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input placeholder="Display Name" value={displayName} onChange={(e) => setDisplayName(e.target.value)} className="pl-10 bg-background/50 backdrop-blur-sm" />
+                </motion.div>
+              )}
               <div className="relative">
-                <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Display Name"
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                  className="pl-10"
-                />
+                <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required className="pl-10 bg-background/50 backdrop-blur-sm" />
               </div>
-            )}
-            <div className="relative">
-              <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="email"
-                placeholder="Email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="pl-10"
-              />
-            </div>
-            {!isForgot && (
-              <div className="relative">
-                <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input
-                  type="password"
-                  placeholder="Password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  minLength={6}
-                  className="pl-10"
-                />
+              {!isForgot && (
+                <div className="relative">
+                  <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} className="pl-10 bg-background/50 backdrop-blur-sm" />
+                </div>
+              )}
+              <Button type="submit" className="w-full shadow-lg shadow-primary/20" disabled={loading}>
+                {loading ? "Loading..." : isForgot ? "Send Reset Link" : isLogin ? "Sign In" : "Sign Up"}
+              </Button>
+            </form>
+            <div className="mt-4 text-center space-y-2">
+              {!isForgot && (
+                <button onClick={() => setIsForgot(true)} className="text-sm text-muted-foreground hover:text-primary transition-colors">
+                  Forgot password?
+                </button>
+              )}
+              <div>
+                <button onClick={() => { setIsLogin(!isLogin); setIsForgot(false); }} className="text-sm text-primary hover:underline">
+                  {isLogin ? "Don't have an account? Sign Up" : "Already have an account? Sign In"}
+                </button>
               </div>
-            )}
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Loading..." : isForgot ? "Send Reset Link" : isLogin ? "Sign In" : "Sign Up"}
-            </Button>
-          </form>
-          <div className="mt-4 text-center space-y-2">
-            {!isForgot && (
-              <button
-                onClick={() => setIsForgot(true)}
-                className="text-sm text-muted-foreground hover:text-primary transition-colors"
-              >
-                Forgot password?
-              </button>
-            )}
-            <div>
-              <button
-                onClick={() => { setIsLogin(!isLogin); setIsForgot(false); }}
-                className="text-sm text-primary hover:underline"
-              >
-                {isLogin ? "Don't have an account? Sign Up" : "Already have an account? Sign In"}
-              </button>
+              {isForgot && (
+                <button onClick={() => setIsForgot(false)} className="text-sm text-primary hover:underline">
+                  Back to Sign In
+                </button>
+              )}
             </div>
-            {isForgot && (
-              <button
-                onClick={() => setIsForgot(false)}
-                className="text-sm text-primary hover:underline"
-              >
-                Back to Sign In
-              </button>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </motion.div>
     </div>
   );
 };

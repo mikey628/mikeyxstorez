@@ -39,7 +39,7 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
 
       {/* Sidebar */}
       <aside className={cn(
-        "fixed inset-y-0 left-0 z-50 w-64 bg-card border-r border-border transform transition-transform duration-200 lg:translate-x-0 lg:static lg:z-auto",
+        "fixed inset-y-0 left-0 z-50 w-64 bg-card/70 backdrop-blur-xl border-r border-border/50 transform transition-transform duration-200 lg:translate-x-0 lg:static lg:z-auto",
         sidebarOpen ? "translate-x-0" : "-translate-x-full"
       )}>
         <div className="flex items-center justify-between p-4 border-b border-border">
@@ -92,7 +92,7 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
 
       {/* Main */}
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="h-14 border-b border-border flex items-center justify-between px-4 bg-card/50 backdrop-blur-sm sticky top-0 z-30">
+        <header className="h-14 border-b border-border/50 flex items-center justify-between px-4 bg-card/40 backdrop-blur-xl sticky top-0 z-30">
           <button onClick={() => setSidebarOpen(true)} className="lg:hidden">
             <Menu className="w-5 h-5" />
           </button>
