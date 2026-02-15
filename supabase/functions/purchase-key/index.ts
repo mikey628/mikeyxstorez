@@ -80,7 +80,11 @@ Deno.serve(async (req) => {
       });
     }
 
-    if (profile.wallet_points < product.price_points) {
+    // Determine price based on duration
+    const durationPrices = product.duration_prices || {};
+    const price = durationPrices[String(duration_days || 30)] || product.price_points;
+
+    if (profile.wallet_points < price) {
       return new Response(JSON.stringify({ error: "Insufficient points" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -129,7 +133,7 @@ Deno.serve(async (req) => {
     await adminClient
       .from("profiles")
       .update({
-        wallet_points: profile.wallet_points - product.price_points,
+        wallet_points: profile.wallet_points - price,
         total_purchases: (currentProfile?.total_purchases || 0) + 1,
       })
       .eq("user_id", user.id);
@@ -140,11 +144,10 @@ Deno.serve(async (req) => {
       .update({ stock: product.stock - 1 })
       .eq("id", product_id);
 
-    // Log transaction
     await adminClient.from("transactions").insert({
       user_id: user.id,
       type: "purchase",
-      amount: product.price_points,
+      amount: price,
       description: `Purchased ${product.name} (${duration_days || 30} days)`,
       product_id: product_id,
       key_id: availableKey.id,

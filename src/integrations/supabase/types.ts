@@ -60,6 +60,7 @@ export type Database = {
           created_at: string
           description: string | null
           duration_days: number[] | null
+          duration_prices: Json | null
           file_url: string | null
           id: string
           name: string
@@ -71,6 +72,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           duration_days?: number[] | null
+          duration_prices?: Json | null
           file_url?: string | null
           id?: string
           name: string
@@ -82,6 +84,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           duration_days?: number[] | null
+          duration_prices?: Json | null
           file_url?: string | null
           id?: string
           name?: string

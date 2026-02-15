@@ -10,6 +10,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { FloatingRefresh } from "@/components/FloatingRefresh";
 
 const navItems = [
   { label: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
@@ -126,6 +127,7 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
           {children}
         </main>
       </div>
+      <FloatingRefresh />
     </div>
   );
 };
