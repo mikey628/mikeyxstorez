@@ -45,7 +45,8 @@ const Products = () => {
 
   const handlePurchase = async () => {
     if (!user || !selectedProduct) return;
-    if ((profile?.wallet_points ?? 0) < selectedProduct.price_points) {
+    const durationPrice = selectedProduct.duration_prices?.[String(selectedDuration)] || selectedProduct.price_points;
+    if ((profile?.wallet_points ?? 0) < durationPrice) {
       toast.error("Insufficient points!");
       return;
     }
@@ -140,7 +141,13 @@ const Products = () => {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-1 text-primary font-bold">
                         <Coins className="w-4 h-4" />
-                        {product.price_points} Points
+                        {(() => {
+                          const prices = product.duration_prices || {};
+                          const durations = product.duration_days || [30];
+                          const minPrice = Math.min(...durations.map((d: number) => prices[String(d)] || product.price_points));
+                          const maxPrice = Math.max(...durations.map((d: number) => prices[String(d)] || product.price_points));
+                          return minPrice === maxPrice ? `${minPrice} pts` : `${minPrice}–${maxPrice} pts`;
+                        })()}
                       </div>
                       <Button
                         size="sm"
@@ -237,26 +244,29 @@ const Products = () => {
                     <div>
                       <label className="text-sm text-muted-foreground mb-2 block">Select Duration</label>
                       <div className="flex gap-2 flex-wrap">
-                        {(selectedProduct?.duration_days || [30]).map((d: number) => (
-                          <motion.div key={d} whileTap={{ scale: 0.95 }}>
-                            <Button
-                              variant={selectedDuration === d ? "default" : "outline"}
-                              size="sm"
-                              onClick={() => setSelectedDuration(d)}
-                              className={selectedDuration === d ? "shadow-md shadow-primary/30" : ""}
-                            >
-                              {d} Days
-                            </Button>
-                          </motion.div>
-                        ))}
+                        {(selectedProduct?.duration_days || [30]).map((d: number) => {
+                          const dPrice = selectedProduct?.duration_prices?.[String(d)] || selectedProduct?.price_points;
+                          return (
+                            <motion.div key={d} whileTap={{ scale: 0.95 }}>
+                              <Button
+                                variant={selectedDuration === d ? "default" : "outline"}
+                                size="sm"
+                                onClick={() => setSelectedDuration(d)}
+                                className={selectedDuration === d ? "shadow-md shadow-primary/30" : ""}
+                              >
+                                {d}d · {dPrice}pts
+                              </Button>
+                            </motion.div>
+                          );
+                        })}
                       </div>
                     </div>
                     <div className="space-y-2 text-sm">
                       <div className="flex justify-between"><span className="text-muted-foreground">Product:</span><span>{selectedProduct?.name}</span></div>
                       <div className="flex justify-between"><span className="text-muted-foreground">Duration:</span><span className="text-primary font-medium">{selectedDuration} days</span></div>
-                      <div className="flex justify-between"><span className="text-muted-foreground">Price:</span><span>{selectedProduct?.price_points} pts</span></div>
+                      <div className="flex justify-between"><span className="text-muted-foreground">Price:</span><span className="font-bold text-primary">{selectedProduct?.duration_prices?.[String(selectedDuration)] || selectedProduct?.price_points} pts</span></div>
                       <div className="flex justify-between"><span className="text-muted-foreground">Your Balance:</span><span>{profile?.wallet_points ?? 0} pts</span></div>
-                      <div className="flex justify-between font-medium"><span>After Purchase:</span><span>{(profile?.wallet_points ?? 0) - (selectedProduct?.price_points ?? 0)} pts</span></div>
+                      <div className="flex justify-between font-medium"><span>After Purchase:</span><span>{(profile?.wallet_points ?? 0) - (selectedProduct?.duration_prices?.[String(selectedDuration)] || (selectedProduct?.price_points ?? 0))} pts</span></div>
                     </div>
                   </div>
                   <DialogFooter>

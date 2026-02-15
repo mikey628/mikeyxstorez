@@ -20,6 +20,7 @@ import { Navigate } from "react-router-dom";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { motion } from "framer-motion";
 import { Progress } from "@/components/ui/progress";
+import { ThemeSettings as ThemeSettingsComponent } from "@/components/ThemeSettings";
 
 const Admin = () => {
   const { isAdmin, loading } = useAuth();
@@ -44,6 +45,7 @@ const Admin = () => {
   const [keyProductId, setKeyProductId] = useState("");
   const [keysInput, setKeysInput] = useState("");
   const [keyDuration, setKeyDuration] = useState<number>(30);
+  const [keyPrice, setKeyPrice] = useState<number>(0);
 
   // Points dialog
   const [pointsDialog, setPointsDialog] = useState(false);
@@ -155,7 +157,7 @@ const Admin = () => {
     fetchAll();
   };
 
-  // Add keys with duration
+  // Add keys with duration and price
   const addKeys = async () => {
     const codes = keysInput.split("\n").map((k) => k.trim()).filter(Boolean);
     if (!codes.length || !keyProductId) return;
@@ -163,12 +165,19 @@ const Admin = () => {
     await supabase.from("keys").insert(rows);
     const prod = products.find(p => p.id === keyProductId);
     if (prod) {
-      await supabase.from("products").update({ stock: prod.stock + codes.length }).eq("id", keyProductId);
+      // Update stock and save price for this duration
+      const currentPrices = prod.duration_prices || {};
+      const updatedPrices = { ...currentPrices, [String(keyDuration)]: keyPrice };
+      await supabase.from("products").update({ 
+        stock: prod.stock + codes.length,
+        duration_prices: updatedPrices 
+      }).eq("id", keyProductId);
     }
-    toast.success(`${codes.length} keys added (${keyDuration} days each)`);
+    toast.success(`${codes.length} keys added (${keyDuration} days @ ${keyPrice} pts each)`);
     setKeyDialog(false);
     setKeysInput("");
     setKeyDuration(30);
+    setKeyPrice(0);
     fetchAll();
   };
 
@@ -451,6 +460,11 @@ const Admin = () => {
                 </div>
               </CardContent>
             </Card>
+            <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
+              <CardContent className="p-6">
+                <ThemeSettingsComponent />
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
 
@@ -510,22 +524,41 @@ const Admin = () => {
               </select>
 
               {keyProductId && (
-                <div>
-                  <label className="text-sm text-muted-foreground mb-2 block flex items-center gap-1">
-                    <Clock className="w-3 h-3" /> Key Duration (days)
-                  </label>
-                  <div className="flex gap-2 flex-wrap">
-                    {availableDurations.map((d: number) => (
-                      <Button
-                        key={d}
-                        variant={keyDuration === d ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => setKeyDuration(d)}
-                        className={keyDuration === d ? "shadow-md shadow-primary/30" : ""}
-                      >
-                        {d}d
-                      </Button>
-                    ))}
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-sm text-muted-foreground mb-2 block flex items-center gap-1">
+                      <Clock className="w-3 h-3" /> Key Duration (days)
+                    </label>
+                    <div className="flex gap-2 flex-wrap">
+                      {availableDurations.map((d: number) => (
+                        <Button
+                          key={d}
+                          variant={keyDuration === d ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => {
+                            setKeyDuration(d);
+                            // Pre-fill existing price for this duration
+                            const existingPrice = selectedKeyProduct?.duration_prices?.[String(d)];
+                            setKeyPrice(existingPrice || selectedKeyProduct?.price_points || 0);
+                          }}
+                          className={keyDuration === d ? "shadow-md shadow-primary/30" : ""}
+                        >
+                          {d}d
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-sm text-muted-foreground mb-1 block flex items-center gap-1">
+                      <Coins className="w-3 h-3" /> Price for {keyDuration}-day key (points)
+                    </label>
+                    <Input
+                      type="number"
+                      placeholder={`Price for ${keyDuration}-day key`}
+                      value={keyPrice}
+                      onChange={(e) => setKeyPrice(parseInt(e.target.value) || 0)}
+                      className="bg-background/50"
+                    />
                   </div>
                 </div>
               )}
