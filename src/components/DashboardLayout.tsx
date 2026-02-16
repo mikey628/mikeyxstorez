@@ -1,6 +1,7 @@
 import { ReactNode, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import {
   LayoutDashboard, Package, History, ShoppingCart, LogOut,
   Menu, X, Shield, MoreVertical, Wallet, User,
@@ -12,16 +13,17 @@ import {
 import { cn } from "@/lib/utils";
 import { FloatingRefresh } from "@/components/FloatingRefresh";
 
-const navItems = [
-  { label: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
-  { label: "Products", icon: Package, path: "/products" },
-  { label: "My Keys", icon: ShoppingCart, path: "/my-keys" },
-  { label: "Transactions", icon: History, path: "/transactions" },
-  { label: "Profile", icon: User, path: "/profile" },
+const navKeys = [
+  { key: "dashboard", icon: LayoutDashboard, path: "/dashboard" },
+  { key: "products", icon: Package, path: "/products" },
+  { key: "myKeys", icon: ShoppingCart, path: "/my-keys" },
+  { key: "transactions", icon: History, path: "/transactions" },
+  { key: "profile", icon: User, path: "/profile" },
 ];
 
 export const DashboardLayout = ({ children }: { children: ReactNode }) => {
   const { user, profile, isAdmin, signOut } = useAuth();
+  const { t } = useLanguage();
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -56,7 +58,7 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
         </div>
 
         <nav className="p-4 space-y-1">
-          {navItems.map((item) => (
+          {navKeys.map((item) => (
             <Link
               key={item.path}
               to={item.path}
@@ -69,7 +71,7 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
               )}
             >
               <item.icon className="w-4 h-4" />
-              {item.label}
+              {t(item.key)}
             </Link>
           ))}
         </nav>
@@ -81,12 +83,12 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium truncate">{profile?.display_name || profile?.email}</p>
-              <p className="text-xs text-muted-foreground">{profile?.wallet_points ?? 0} pts</p>
+              <p className="text-xs text-muted-foreground">{profile?.wallet_points ?? 0} {t("pts")}</p>
             </div>
           </div>
           <Button variant="ghost" size="sm" className="w-full justify-start text-muted-foreground" onClick={handleLogout}>
             <LogOut className="w-4 h-4 mr-2" />
-            Sign Out
+            {t("signOut")}
           </Button>
         </div>
       </aside>
@@ -100,7 +102,7 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
           <div className="flex items-center gap-2 ml-auto">
             <span className="text-sm text-muted-foreground hidden sm:inline">
               <Wallet className="inline w-4 h-4 mr-1" />
-              {profile?.wallet_points ?? 0} Points
+              {profile?.wallet_points ?? 0} {t("points")}
             </span>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -117,7 +119,7 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
                 )}
                 <DropdownMenuItem onClick={handleLogout}>
                   <LogOut className="w-4 h-4 mr-2" />
-                  Sign Out
+                  {t("signOut")}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

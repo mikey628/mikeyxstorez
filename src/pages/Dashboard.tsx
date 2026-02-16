@@ -1,8 +1,10 @@
 import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { NepalFlag } from "@/components/NepalFlag";
+import { SettingsPanel } from "@/components/SettingsPanel";
 import { Wallet, ShoppingCart, History, Package, User } from "lucide-react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -29,6 +31,7 @@ const socialIcons = {
 
 const Dashboard = () => {
   const { profile, user } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const [recentTransactions, setRecentTransactions] = useState<any[]>([]);
   const [productCount, setProductCount] = useState(0);
@@ -52,10 +55,10 @@ const Dashboard = () => {
   }, [user]);
 
   const stats = [
-    { label: "Wallet Points", value: profile?.wallet_points ?? 0, icon: Wallet, gradient: "from-purple-500/20 to-blue-500/20" },
-    { label: "Total Purchases", value: profile?.total_purchases ?? 0, icon: ShoppingCart, gradient: "from-green-500/20 to-emerald-500/20" },
-    { label: "Available Products", value: productCount, icon: Package, gradient: "from-amber-500/20 to-orange-500/20" },
-    { label: "Transactions", value: recentTransactions.length, icon: History, gradient: "from-sky-500/20 to-indigo-500/20" },
+    { label: t("walletPoints"), value: profile?.wallet_points ?? 0, icon: Wallet, gradient: "from-purple-500/20 to-blue-500/20" },
+    { label: t("totalPurchases"), value: profile?.total_purchases ?? 0, icon: ShoppingCart, gradient: "from-green-500/20 to-emerald-500/20" },
+    { label: t("availableProducts"), value: productCount, icon: Package, gradient: "from-amber-500/20 to-orange-500/20" },
+    { label: t("transactions"), value: recentTransactions.length, icon: History, gradient: "from-sky-500/20 to-indigo-500/20" },
   ];
 
   const activeSocials = [
@@ -76,8 +79,8 @@ const Dashboard = () => {
         >
           <NepalFlag className="w-8 h-10" />
           <div>
-            <h1 className="text-2xl font-bold">Welcome back, {profile?.display_name || profile?.email || "User"}!</h1>
-            <p className="text-muted-foreground">Here's your account overview.</p>
+            <h1 className="text-2xl font-bold">{t("welcome")}, {profile?.display_name || profile?.email || "User"}!</h1>
+            <p className="text-muted-foreground">{t("overview")}</p>
           </div>
         </motion.div>
 
@@ -98,7 +101,7 @@ const Dashboard = () => {
               </div>
               <div className="text-right">
                 <p className="text-lg font-bold text-primary">{profile?.wallet_points ?? 0}</p>
-                <p className="text-xs text-muted-foreground">Points</p>
+                <p className="text-xs text-muted-foreground">{t("points")}</p>
               </div>
             </CardContent>
           </Card>
@@ -133,7 +136,7 @@ const Dashboard = () => {
           <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 }}>
             <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
               <CardHeader>
-                <CardTitle className="text-lg">Recent Transactions</CardTitle>
+                <CardTitle className="text-lg">{t("recentTransactions")}</CardTitle>
               </CardHeader>
               <CardContent>
                 {recentTransactions.length === 0 ? (
@@ -147,7 +150,7 @@ const Dashboard = () => {
                           <p className="text-xs text-muted-foreground">{new Date(tx.created_at).toLocaleDateString()}</p>
                         </div>
                         <span className={`text-sm font-semibold ${tx.type === "point_added" ? "text-success" : "text-destructive"}`}>
-                          {tx.type === "point_added" ? "+" : "-"}{tx.amount} pts
+                          {tx.type === "point_added" ? "+" : "-"}{tx.amount} {t("pts")}
                         </span>
                       </div>
                     ))}
@@ -160,7 +163,7 @@ const Dashboard = () => {
           <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.35 }}>
             <Card className="border-border/50 bg-card/50 backdrop-blur-sm cursor-pointer hover:border-primary/50 transition-all hover:shadow-lg hover:shadow-primary/5" onClick={() => navigate("/products")}>
               <CardHeader>
-                <CardTitle className="text-lg">Browse Products</CardTitle>
+                <CardTitle className="text-lg">{t("browseProducts")}</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-muted-foreground text-sm mb-4">
@@ -168,12 +171,19 @@ const Dashboard = () => {
                 </p>
                 <div className="flex items-center gap-2 text-primary text-sm font-medium">
                   <Package className="w-4 h-4" />
-                  View All Products →
+                  {t("viewAll")}
                 </div>
               </CardContent>
             </Card>
           </motion.div>
         </div>
+
+        {/* Settings Panel */}
+        <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
+          <CardContent className="p-6">
+            <SettingsPanel />
+          </CardContent>
+        </Card>
 
         {/* Social Links Footer */}
         {activeSocials.length > 0 && (
