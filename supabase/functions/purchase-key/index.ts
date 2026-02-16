@@ -90,12 +90,13 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Find available key
+    // Find available key matching the requested duration
     const { data: availableKey } = await adminClient
       .from("keys")
       .select("*")
       .eq("product_id", product_id)
       .eq("is_used", false)
+      .eq("duration_days", duration_days || 30)
       .limit(1)
       .single();
 

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,13 +10,14 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Package, Coins, ShoppingCart, Clock, FileDown, Loader2 } from "lucide-react";
+import { Package, Coins, ShoppingCart, Clock, FileDown, Loader2, Key } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { Progress } from "@/components/ui/progress";
 
 const Products = () => {
   const { user, profile, refreshProfile } = useAuth();
+  const { t } = useLanguage();
   const [products, setProducts] = useState<any[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [selectedDuration, setSelectedDuration] = useState<number>(30);
@@ -24,6 +26,7 @@ const Products = () => {
   const [generating, setGenerating] = useState(false);
   const [genProgress, setGenProgress] = useState(0);
   const [genTimer, setGenTimer] = useState(5);
+  const [durationStocks, setDurationStocks] = useState<Record<string, number>>({});
 
   const fetchProducts = async () => {
     const { data } = await supabase.from("products").select("*").order("created_at");
@@ -34,6 +37,26 @@ const Products = () => {
     fetchProducts();
   }, []);
 
+  // Fetch per-duration stock when a product is selected
+  const fetchDurationStocks = async (product: any) => {
+    const durations = product.duration_days || [30];
+    const stocks: Record<string, number> = {};
+    
+    await Promise.all(
+      durations.map(async (d: number) => {
+        const { count } = await supabase
+          .from("keys")
+          .select("*", { count: "exact", head: true })
+          .eq("product_id", product.id)
+          .eq("is_used", false)
+          .eq("duration_days", d);
+        stocks[String(d)] = count || 0;
+      })
+    );
+    
+    setDurationStocks(stocks);
+  };
+
   const openPurchaseDialog = (product: any) => {
     setSelectedProduct(product);
     setSelectedDuration((product.duration_days || [30])[0]);
@@ -41,6 +64,8 @@ const Products = () => {
     setGenerating(false);
     setGenProgress(0);
     setGenTimer(5);
+    setDurationStocks({});
+    fetchDurationStocks(product);
   };
 
   const handlePurchase = async () => {
@@ -50,6 +75,13 @@ const Products = () => {
       toast.error("Insufficient points!");
       return;
     }
+
+    const stock = durationStocks[String(selectedDuration)] || 0;
+    if (stock <= 0) {
+      toast.error(`No ${selectedDuration}-day keys available!`);
+      return;
+    }
+
     setPurchasing(true);
 
     try {
@@ -59,7 +91,6 @@ const Products = () => {
       if (error) throw error;
       if (data.error) throw new Error(data.error);
 
-      // Start key generation animation
       setGenerating(true);
       setPurchasing(false);
 
@@ -95,7 +126,7 @@ const Products = () => {
       <AnimatedBackground />
       <div className="space-y-6 relative z-10">
         <div>
-          <h1 className="text-2xl font-bold">Products</h1>
+          <h1 className="text-2xl font-bold">{t("products")}</h1>
           <p className="text-muted-foreground">Browse and purchase digital access keys.</p>
         </div>
 
@@ -103,7 +134,7 @@ const Products = () => {
           <Card className="border-border/50 bg-card/60 backdrop-blur-sm">
             <CardContent className="p-12 text-center">
               <Package className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-              <p className="text-muted-foreground">No products available yet.</p>
+              <p className="text-muted-foreground">{t("noProducts")}</p>
             </CardContent>
           </Card>
         ) : (
@@ -120,9 +151,9 @@ const Products = () => {
                     <div className="flex items-start justify-between">
                       <CardTitle className="text-lg">{product.name}</CardTitle>
                       {product.stock <= 0 ? (
-                        <Badge variant="destructive">Out of Stock</Badge>
+                        <Badge variant="destructive">{t("outOfStock")}</Badge>
                       ) : (
-                        <Badge variant="secondary" className="bg-success/10 text-success border-0">{product.stock} left</Badge>
+                        <Badge variant="secondary" className="bg-success/10 text-success border-0">{product.stock} {t("left")}</Badge>
                       )}
                     </div>
                   </CardHeader>
@@ -130,7 +161,7 @@ const Products = () => {
                     <p className="text-sm text-muted-foreground">{product.description || "No description."}</p>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       <Clock className="w-3 h-3" />
-                      Duration: {(product.duration_days || [30]).join(", ")} days
+                      Duration: {(product.duration_days || [30]).join(", ")} {t("days")}
                     </div>
                     {product.file_url && (
                       <div className="flex items-center gap-1 text-xs text-primary">
@@ -146,7 +177,7 @@ const Products = () => {
                           const durations = product.duration_days || [30];
                           const minPrice = Math.min(...durations.map((d: number) => prices[String(d)] || product.price_points));
                           const maxPrice = Math.max(...durations.map((d: number) => prices[String(d)] || product.price_points));
-                          return minPrice === maxPrice ? `${minPrice} pts` : `${minPrice}–${maxPrice} pts`;
+                          return minPrice === maxPrice ? `${minPrice} ${t("pts")}` : `${minPrice}–${maxPrice} ${t("pts")}`;
                         })()}
                       </div>
                       <Button
@@ -156,7 +187,7 @@ const Products = () => {
                         className="group-hover:shadow-md group-hover:shadow-primary/20 transition-shadow"
                       >
                         <ShoppingCart className="w-4 h-4 mr-1" />
-                        Buy Now
+                        {t("buyNow")}
                       </Button>
                     </div>
                   </CardContent>
@@ -170,7 +201,7 @@ const Products = () => {
           <DialogContent className="bg-card/95 backdrop-blur-xl border-border/50">
             <DialogHeader>
               <DialogTitle>
-                {deliveredKey ? "🎉 Purchase Complete!" : generating ? "⚡ Generating Key..." : "Confirm Purchase"}
+                {deliveredKey ? "🎉 Purchase Complete!" : generating ? "⚡ Generating Key..." : t("confirmPurchase")}
               </DialogTitle>
               <DialogDescription>
                 {deliveredKey
@@ -220,7 +251,7 @@ const Products = () => {
                     {deliveredKey}
                   </div>
                   <Badge className="mt-2 bg-primary/10 text-primary border-0">
-                    <Clock className="w-3 h-3 mr-1" /> {selectedDuration} days duration
+                    <Clock className="w-3 h-3 mr-1" /> {selectedDuration} {t("days")} duration
                   </Badge>
                   {selectedProduct?.file_url && (
                     <a href={selectedProduct.file_url} target="_blank" rel="noopener noreferrer">
@@ -240,21 +271,28 @@ const Products = () => {
                   animate={{ opacity: 1 }}
                 >
                   <div className="py-4 space-y-3">
-                    {/* Duration selector */}
+                    {/* Duration selector with per-duration stock */}
                     <div>
-                      <label className="text-sm text-muted-foreground mb-2 block">Select Duration</label>
+                      <label className="text-sm text-muted-foreground mb-2 block">{t("selectDuration")}</label>
                       <div className="flex gap-2 flex-wrap">
                         {(selectedProduct?.duration_days || [30]).map((d: number) => {
                           const dPrice = selectedProduct?.duration_prices?.[String(d)] || selectedProduct?.price_points;
+                          const stock = durationStocks[String(d)] ?? "...";
+                          const hasStock = typeof stock === "number" ? stock > 0 : true;
                           return (
                             <motion.div key={d} whileTap={{ scale: 0.95 }}>
                               <Button
                                 variant={selectedDuration === d ? "default" : "outline"}
                                 size="sm"
                                 onClick={() => setSelectedDuration(d)}
-                                className={selectedDuration === d ? "shadow-md shadow-primary/30" : ""}
+                                disabled={!hasStock}
+                                className={`flex flex-col h-auto py-2 px-3 ${selectedDuration === d ? "shadow-md shadow-primary/30" : ""}`}
                               >
-                                {d}d · {dPrice}pts
+                                <span>{d}d · {dPrice}{t("pts")}</span>
+                                <span className={`text-[10px] mt-0.5 ${hasStock ? "text-green-400" : "text-destructive"}`}>
+                                  <Key className="w-2.5 h-2.5 inline mr-0.5" />
+                                  {stock} {t("keysAvailable")}
+                                </span>
                               </Button>
                             </motion.div>
                           );
@@ -263,16 +301,19 @@ const Products = () => {
                     </div>
                     <div className="space-y-2 text-sm">
                       <div className="flex justify-between"><span className="text-muted-foreground">Product:</span><span>{selectedProduct?.name}</span></div>
-                      <div className="flex justify-between"><span className="text-muted-foreground">Duration:</span><span className="text-primary font-medium">{selectedDuration} days</span></div>
-                      <div className="flex justify-between"><span className="text-muted-foreground">Price:</span><span className="font-bold text-primary">{selectedProduct?.duration_prices?.[String(selectedDuration)] || selectedProduct?.price_points} pts</span></div>
-                      <div className="flex justify-between"><span className="text-muted-foreground">Your Balance:</span><span>{profile?.wallet_points ?? 0} pts</span></div>
-                      <div className="flex justify-between font-medium"><span>After Purchase:</span><span>{(profile?.wallet_points ?? 0) - (selectedProduct?.duration_prices?.[String(selectedDuration)] || (selectedProduct?.price_points ?? 0))} pts</span></div>
+                      <div className="flex justify-between"><span className="text-muted-foreground">Duration:</span><span className="text-primary font-medium">{selectedDuration} {t("days")}</span></div>
+                      <div className="flex justify-between"><span className="text-muted-foreground">Price:</span><span className="font-bold text-primary">{selectedProduct?.duration_prices?.[String(selectedDuration)] || selectedProduct?.price_points} {t("pts")}</span></div>
+                      <div className="flex justify-between"><span className="text-muted-foreground">Your Balance:</span><span>{profile?.wallet_points ?? 0} {t("pts")}</span></div>
+                      <div className="flex justify-between font-medium"><span>After Purchase:</span><span>{(profile?.wallet_points ?? 0) - (selectedProduct?.duration_prices?.[String(selectedDuration)] || (selectedProduct?.price_points ?? 0))} {t("pts")}</span></div>
                     </div>
                   </div>
                   <DialogFooter>
-                    <Button variant="outline" onClick={closeDialog}>Cancel</Button>
-                    <Button onClick={handlePurchase} disabled={purchasing}>
-                      {purchasing ? "Processing..." : "Confirm Purchase"}
+                    <Button variant="outline" onClick={closeDialog}>{t("cancel")}</Button>
+                    <Button 
+                      onClick={handlePurchase} 
+                      disabled={purchasing || (durationStocks[String(selectedDuration)] ?? 0) <= 0}
+                    >
+                      {purchasing ? "Processing..." : t("confirmPurchase")}
                     </Button>
                   </DialogFooter>
                 </motion.div>
