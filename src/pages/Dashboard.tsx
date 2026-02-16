@@ -4,7 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { NepalFlag } from "@/components/NepalFlag";
-import { SettingsPanel } from "@/components/SettingsPanel";
 import { Wallet, ShoppingCart, History, Package, User } from "lucide-react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -178,12 +177,8 @@ const Dashboard = () => {
           </motion.div>
         </div>
 
-        {/* Settings Panel */}
-        <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
-          <CardContent className="p-6">
-            <SettingsPanel />
-          </CardContent>
-        </Card>
+
+
 
         {/* Social Links Footer */}
         {activeSocials.length > 0 && (

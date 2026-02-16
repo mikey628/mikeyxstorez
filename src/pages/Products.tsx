@@ -153,7 +153,7 @@ const Products = () => {
                       {product.stock <= 0 ? (
                         <Badge variant="destructive">{t("outOfStock")}</Badge>
                       ) : (
-                        <Badge variant="secondary" className="bg-success/10 text-success border-0">{product.stock} {t("left")}</Badge>
+                        <Badge variant="secondary" className="bg-success/10 text-success border-0">{t("inStock")}</Badge>
                       )}
                     </div>
                   </CardHeader>

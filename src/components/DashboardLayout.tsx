@@ -4,12 +4,16 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import {
   LayoutDashboard, Package, History, ShoppingCart, LogOut,
-  Menu, X, Shield, MoreVertical, Wallet, User,
+  Menu, X, Shield, MoreVertical, Wallet, User, Settings,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
+import { SettingsPanel } from "@/components/SettingsPanel";
 import { cn } from "@/lib/utils";
 import { FloatingRefresh } from "@/components/FloatingRefresh";
 
@@ -27,6 +31,7 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const handleLogout = async () => {
     await signOut();
@@ -117,6 +122,11 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
                     Admin Panel
                   </DropdownMenuItem>
                 )}
+                <DropdownMenuItem onClick={() => setSettingsOpen(true)}>
+                  <Settings className="w-4 h-4 mr-2" />
+                  {t("settings")}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout}>
                   <LogOut className="w-4 h-4 mr-2" />
                   {t("signOut")}
@@ -129,6 +139,14 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
           {children}
         </main>
       </div>
+      <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
+        <DialogContent className="bg-card/95 backdrop-blur-xl border-border/50 max-w-lg max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{t("settings")}</DialogTitle>
+          </DialogHeader>
+          <SettingsPanel />
+        </DialogContent>
+      </Dialog>
       <FloatingRefresh />
     </div>
   );
