@@ -14,7 +14,7 @@ import { toast } from "sonner";
 import {
   Users, Package, Key, Plus, Trash2, Edit, Search,
   Coins, Download, Ban, Shield, CheckCircle, XCircle, Upload,
-  LogOut, Link as LinkIcon, Globe, Clock,
+  LogOut, Link as LinkIcon, Globe, Clock, Power, AlertTriangle, RotateCcw,
 } from "lucide-react";
 import { Navigate } from "react-router-dom";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
@@ -31,6 +31,9 @@ const Admin = () => {
   const [keys, setKeys] = useState<any[]>([]);
   const [searchUser, setSearchUser] = useState("");
   const [socialLinks, setSocialLinks] = useState<Record<string, string>>({ whatsapp_link: "", tiktok_link: "", discord_link: "" });
+  const [maintenanceMode, setMaintenanceMode] = useState(false);
+  const [resetDialog, setResetDialog] = useState(false);
+  const [resetType, setResetType] = useState<"keys" | "points" | "all">("all");
 
   // Product dialog
   const [productDialog, setProductDialog] = useState(false);
@@ -74,8 +77,13 @@ const Admin = () => {
     setUsers(allUsers || []);
 
     const links: Record<string, string> = { whatsapp_link: "", tiktok_link: "", discord_link: "" };
-    (settings || []).forEach((s: any) => { links[s.key] = s.value || ""; });
+    let mMode = false;
+    (settings || []).forEach((s: any) => {
+      if (s.key === "maintenance_mode") mMode = s.value === "true";
+      else links[s.key] = s.value || "";
+    });
     setSocialLinks(links);
+    setMaintenanceMode(mMode);
 
     const totalSales = (txns || []).filter((t: any) => t.type === "purchase").length;
     const totalPoints = (allUsers || []).reduce((s: number, u: any) => s + (u.wallet_points || 0), 0);
@@ -250,6 +258,33 @@ const Admin = () => {
     const blob = new Blob([headers + rows], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a"); a.href = url; a.download = "sales_report.csv"; a.click();
+  };
+
+  const toggleMaintenance = async () => {
+    const newVal = !maintenanceMode;
+    await supabase.from("site_settings").update({ value: String(newVal) }).eq("key", "maintenance_mode");
+    setMaintenanceMode(newVal);
+    toast.success(newVal ? "Maintenance mode ON — site is offline for users" : "Maintenance mode OFF — site is live");
+  };
+
+  const performReset = async () => {
+    if (resetType === "keys" || resetType === "all") {
+      // Delete all unused keys and mark used ones
+      await supabase.from("keys").delete().eq("is_used", false);
+      // Reset product stock to 0
+      for (const p of products) {
+        await supabase.from("products").update({ stock: 0, duration_prices: {} }).eq("id", p.id);
+      }
+    }
+    if (resetType === "points" || resetType === "all") {
+      // Reset all user wallet points to 0
+      for (const u of users) {
+        await supabase.from("profiles").update({ wallet_points: 0, total_purchases: 0 }).eq("user_id", u.user_id);
+      }
+    }
+    toast.success(`Reset complete: ${resetType === "all" ? "keys + points" : resetType}`);
+    setResetDialog(false);
+    fetchAll();
   };
 
   const filteredUsers = users.filter((u) =>
@@ -460,6 +495,45 @@ const Admin = () => {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Maintenance Mode */}
+            <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
+              <CardContent className="p-6 space-y-4">
+                <h3 className="font-semibold flex items-center gap-2"><Power className="w-4 h-4" /> Server / Maintenance</h3>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium">{maintenanceMode ? "🔴 Site is OFFLINE" : "🟢 Site is ONLINE"}</p>
+                    <p className="text-xs text-muted-foreground">Toggle maintenance mode for all users</p>
+                  </div>
+                  <Button
+                    variant={maintenanceMode ? "default" : "destructive"}
+                    onClick={toggleMaintenance}
+                  >
+                    <Power className="w-4 h-4 mr-1" />
+                    {maintenanceMode ? "Go Online" : "Go Offline"}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Reset System */}
+            <Card className="border-border/50 bg-card/50 backdrop-blur-sm border-destructive/30">
+              <CardContent className="p-6 space-y-4">
+                <h3 className="font-semibold flex items-center gap-2 text-destructive"><AlertTriangle className="w-4 h-4" /> Danger Zone — Reset</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <Button variant="outline" className="border-destructive/50 text-destructive hover:bg-destructive/10" onClick={() => { setResetType("keys"); setResetDialog(true); }}>
+                    <RotateCcw className="w-4 h-4 mr-1" /> Reset All Keys
+                  </Button>
+                  <Button variant="outline" className="border-destructive/50 text-destructive hover:bg-destructive/10" onClick={() => { setResetType("points"); setResetDialog(true); }}>
+                    <RotateCcw className="w-4 h-4 mr-1" /> Reset All Points
+                  </Button>
+                  <Button variant="destructive" onClick={() => { setResetType("all"); setResetDialog(true); }}>
+                    <AlertTriangle className="w-4 h-4 mr-1" /> Reset Everything
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
             <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
               <CardContent className="p-6">
                 <ThemeSettingsComponent />
@@ -609,6 +683,24 @@ const Admin = () => {
             <DialogFooter>
               <Button variant="outline" onClick={() => setDeleteUserDialog(false)}>Cancel</Button>
               <Button variant="destructive" onClick={confirmDeleteUser}>Delete Permanently</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Reset Confirm Dialog */}
+        <Dialog open={resetDialog} onOpenChange={setResetDialog}>
+          <DialogContent className="bg-card/95 backdrop-blur-xl">
+            <DialogHeader>
+              <DialogTitle>⚠️ Reset {resetType === "all" ? "Everything" : resetType === "keys" ? "All Keys" : "All Points"}</DialogTitle>
+              <DialogDescription>
+                {resetType === "keys" && "This will delete all unused keys and reset product stock to 0."}
+                {resetType === "points" && "This will reset all user wallet points and purchase counts to 0."}
+                {resetType === "all" && "This will delete all unused keys, reset stock to 0, AND reset all user points to 0. This cannot be undone!"}
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setResetDialog(false)}>Cancel</Button>
+              <Button variant="destructive" onClick={performReset}>Yes, Reset</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
