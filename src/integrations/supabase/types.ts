@@ -97,42 +97,51 @@ export type Database = {
       profiles: {
         Row: {
           created_at: string
+          discord_link: string | null
           display_name: string | null
           email: string
           id: string
           is_approved: boolean
           is_banned: boolean
+          phone_number: string | null
           photo_url: string | null
           total_purchases: number
           updated_at: string
           user_id: string
           wallet_points: number
+          whatsapp_number: string | null
         }
         Insert: {
           created_at?: string
+          discord_link?: string | null
           display_name?: string | null
           email: string
           id?: string
           is_approved?: boolean
           is_banned?: boolean
+          phone_number?: string | null
           photo_url?: string | null
           total_purchases?: number
           updated_at?: string
           user_id: string
           wallet_points?: number
+          whatsapp_number?: string | null
         }
         Update: {
           created_at?: string
+          discord_link?: string | null
           display_name?: string | null
           email?: string
           id?: string
           is_approved?: boolean
           is_banned?: boolean
+          phone_number?: string | null
           photo_url?: string | null
           total_purchases?: number
           updated_at?: string
           user_id?: string
           wallet_points?: number
+          whatsapp_number?: string | null
         }
         Relationships: []
       }

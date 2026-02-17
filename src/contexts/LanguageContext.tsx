@@ -28,6 +28,10 @@ const translations: Record<Language, Record<string, string>> = {
     buyNow: "Buy Now", selectDuration: "Select Duration", confirmPurchase: "Confirm Purchase", cancel: "Cancel",
     keysAvailable: "keys available", outOfStock: "Out of Stock", noProducts: "No products available yet.",
     pts: "pts", points: "Points", days: "days", left: "left",
+    profileUpdated: "Profile updated!", yourPhoto: "Your Photo", clickToChangePhoto: "Click to change photo",
+    accountDetails: "Account Details", displayName: "Display Name", phoneNumber: "Phone Number",
+    saveChanges: "Save Changes", yourPurchasedKeys: "Your purchased access keys.", noKeysPurchased: "No keys purchased yet.",
+    purchased: "Purchased",
   },
   ne: {
     dashboard: "ड्यासबोर्ड", products: "उत्पादनहरू", myKeys: "मेरा कुञ्जीहरू", transactions: "लेनदेनहरू",
@@ -38,6 +42,10 @@ const translations: Record<Language, Record<string, string>> = {
     buyNow: "किन्नुहोस्", selectDuration: "अवधि छान्नुहोस्", confirmPurchase: "खरिद पुष्टि", cancel: "रद्द",
     keysAvailable: "कुञ्जीहरू उपलब्ध", outOfStock: "स्टक सकियो", noProducts: "अहिलेसम्म कुनै उत्पादन छैन।",
     pts: "पोइन्ट", points: "पोइन्ट", days: "दिन", left: "बाँकी",
+    profileUpdated: "प्रोफाइल अपडेट भयो!", yourPhoto: "तपाईंको फोटो", clickToChangePhoto: "फोटो परिवर्तन गर्नुहोस्",
+    accountDetails: "खाता विवरण", displayName: "प्रदर्शन नाम", phoneNumber: "फोन नम्बर",
+    saveChanges: "परिवर्तन सेभ गर्नुहोस्", yourPurchasedKeys: "तपाईंले किनेका कुञ्जीहरू।", noKeysPurchased: "अहिलेसम्म कुनै कुञ्जी किनिएको छैन।",
+    purchased: "किनिएको",
   },
   ur: {
     dashboard: "ڈیش بورڈ", products: "مصنوعات", myKeys: "میری چابیاں", transactions: "لین دین",
