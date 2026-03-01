@@ -55,6 +55,48 @@ export type Database = {
           },
         ]
       }
+      offers: {
+        Row: {
+          created_at: string
+          description: string | null
+          duration_days: number | null
+          id: string
+          is_active: boolean
+          key_code: string | null
+          price_points: number | null
+          sort_order: number | null
+          title: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          duration_days?: number | null
+          id?: string
+          is_active?: boolean
+          key_code?: string | null
+          price_points?: number | null
+          sort_order?: number | null
+          title: string
+          type?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          duration_days?: number | null
+          id?: string
+          is_active?: boolean
+          key_code?: string | null
+          price_points?: number | null
+          sort_order?: number | null
+          title?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       products: {
         Row: {
           created_at: string
