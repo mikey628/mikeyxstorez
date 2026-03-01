@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { NepalFlag } from "@/components/NepalFlag";
+import { LogoBall } from "@/components/LogoBall";
 import { Wallet, ShoppingCart, History, Package, User } from "lucide-react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -87,7 +88,11 @@ const Dashboard = () => {
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
           <Card className="border-border/50 bg-card/50 backdrop-blur-md cursor-pointer hover:border-primary/30 transition-all hover:shadow-lg hover:shadow-primary/5" onClick={() => navigate("/profile")}>
             <CardContent className="p-4 flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center overflow-hidden ring-2 ring-primary/20">
+              <div className={`w-12 h-12 rounded-full flex items-center justify-center overflow-hidden ring-2 ${
+                (profile?.total_purchases ?? 0) >= 50
+                  ? "ring-yellow-400 shadow-lg shadow-yellow-400/40 bg-gradient-to-br from-yellow-500/20 to-amber-500/20"
+                  : "bg-primary/20 ring-primary/20"
+              }`}>
                 {profile?.photo_url ? (
                   <img src={profile.photo_url} alt="Avatar" className="w-full h-full object-cover" />
                 ) : (
@@ -205,6 +210,7 @@ const Dashboard = () => {
           </motion.div>
         )}
       </div>
+      <LogoBall />
     </DashboardLayout>
   );
 };

@@ -15,6 +15,7 @@ import {
   Users, Package, Key, Plus, Trash2, Edit, Search,
   Coins, Download, Ban, Shield, CheckCircle, XCircle, Upload,
   LogOut, Link as LinkIcon, Globe, Clock, Power, AlertTriangle, RotateCcw,
+  Tag, Gift, Image, Video,
 } from "lucide-react";
 import { Navigate } from "react-router-dom";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
@@ -50,6 +51,19 @@ const Admin = () => {
   const [keyDuration, setKeyDuration] = useState<number>(30);
   const [keyPrice, setKeyPrice] = useState<number>(0);
 
+  // Offers management
+  const [offers, setOffers] = useState<any[]>([]);
+  const [offerDialog, setOfferDialog] = useState(false);
+  const [editOffer, setEditOffer] = useState<any>(null);
+  const [offerForm, setOfferForm] = useState({ title: "", description: "", type: "offer", price_points: 0, duration_days: 0, key_code: "", is_active: true });
+
+  // Logo media
+  const [logoImage, setLogoImage] = useState("");
+  const [logoVideo, setLogoVideo] = useState("");
+  const [logoImageFile, setLogoImageFile] = useState<File | null>(null);
+  const [logoVideoFile, setLogoVideoFile] = useState<File | null>(null);
+  const [logoUploading, setLogoUploading] = useState(false);
+
   // Points dialog
   const [pointsDialog, setPointsDialog] = useState(false);
   const [pointsUserId, setPointsUserId] = useState("");
@@ -70,16 +84,20 @@ const Admin = () => {
       supabase.from("profiles").select("*").order("created_at", { ascending: false }),
       supabase.from("site_settings").select("*"),
     ]);
+    const { data: offerData } = await supabase.from("offers").select("*").order("sort_order");
 
     setProducts(prods || []);
     setTransactions(txns || []);
     setKeys(allKeys || []);
     setUsers(allUsers || []);
+    setOffers(offerData || []);
 
     const links: Record<string, string> = { whatsapp_link: "", tiktok_link: "", discord_link: "" };
     let mMode = false;
     (settings || []).forEach((s: any) => {
       if (s.key === "maintenance_mode") mMode = s.value === "true";
+      else if (s.key === "logo_image_url") setLogoImage(s.value || "");
+      else if (s.key === "logo_video_url") setLogoVideo(s.value || "");
       else links[s.key] = s.value || "";
     });
     setSocialLinks(links);
@@ -292,6 +310,63 @@ const Admin = () => {
     (u.display_name || "").toLowerCase().includes(searchUser.toLowerCase())
   );
 
+  // Offers CRUD
+  const saveOffer = async () => {
+    const payload = {
+      title: offerForm.title,
+      description: offerForm.description || null,
+      type: offerForm.type,
+      price_points: offerForm.price_points || null,
+      duration_days: offerForm.duration_days || null,
+      key_code: offerForm.key_code || null,
+      is_active: offerForm.is_active,
+    };
+    if (editOffer) {
+      await supabase.from("offers").update(payload).eq("id", editOffer.id);
+      toast.success("Offer updated");
+    } else {
+      await supabase.from("offers").insert(payload);
+      toast.success("Offer added!");
+    }
+    setOfferDialog(false);
+    setEditOffer(null);
+    setOfferForm({ title: "", description: "", type: "offer", price_points: 0, duration_days: 0, key_code: "", is_active: true });
+    fetchAll();
+  };
+
+  const deleteOffer = async (id: string) => {
+    await supabase.from("offers").delete().eq("id", id);
+    toast.success("Offer removed");
+    fetchAll();
+  };
+
+  const toggleOfferActive = async (o: any) => {
+    await supabase.from("offers").update({ is_active: !o.is_active }).eq("id", o.id);
+    fetchAll();
+  };
+
+  // Logo media upload
+  const uploadLogoMedia = async (file: File, type: "image" | "video") => {
+    setLogoUploading(true);
+    const ext = file.name.split(".").pop();
+    const path = `logo_${type}_${Date.now()}.${ext}`;
+    const { error } = await supabase.storage.from("logo-media").upload(path, file, { upsert: true });
+    if (error) { toast.error("Upload failed"); setLogoUploading(false); return; }
+    const { data: { publicUrl } } = supabase.storage.from("logo-media").getPublicUrl(path);
+    const key = type === "image" ? "logo_image_url" : "logo_video_url";
+    const { count } = await supabase.from("site_settings").select("*", { count: "exact", head: true }).eq("key", key);
+    if (count && count > 0) {
+      await supabase.from("site_settings").update({ value: publicUrl }).eq("key", key);
+    } else {
+      await supabase.from("site_settings").insert({ key, value: publicUrl });
+    }
+    if (type === "image") setLogoImage(publicUrl); else setLogoVideo(publicUrl);
+    toast.success(`Logo ${type} uploaded!`);
+    setLogoUploading(false);
+  };
+
+
+
   const statCards = [
     { label: "Total Users", value: stats.users, icon: Users },
     { label: "Total Sales", value: stats.sales, icon: Package },
@@ -329,11 +404,12 @@ const Admin = () => {
         </div>
 
         <Tabs defaultValue="products">
-          <TabsList className="grid w-full grid-cols-5 bg-card/50 backdrop-blur-sm">
+          <TabsList className="grid w-full grid-cols-6 bg-card/50 backdrop-blur-sm">
             <TabsTrigger value="products">Products</TabsTrigger>
             <TabsTrigger value="users">Users</TabsTrigger>
             <TabsTrigger value="keys">Keys</TabsTrigger>
-            <TabsTrigger value="transactions">Transactions</TabsTrigger>
+            <TabsTrigger value="transactions">Txns</TabsTrigger>
+            <TabsTrigger value="offers">Offers</TabsTrigger>
             <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
 
@@ -540,6 +616,82 @@ const Admin = () => {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* OFFERS TAB */}
+          <TabsContent value="offers" className="space-y-4">
+            <div className="flex gap-2">
+              <Button onClick={() => { setEditOffer(null); setOfferForm({ title: "", description: "", type: "offer", price_points: 0, duration_days: 0, key_code: "", is_active: true }); setOfferDialog(true); }}>
+                <Plus className="w-4 h-4 mr-1" /> Add Offer
+              </Button>
+              <Button variant="outline" onClick={() => { setEditOffer(null); setOfferForm({ title: "", description: "", type: "free", price_points: 0, duration_days: 0, key_code: "", is_active: true }); setOfferDialog(true); }}>
+                <Gift className="w-4 h-4 mr-1" /> Add Free Key
+              </Button>
+            </div>
+
+            {/* Logo Media Upload */}
+            <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
+              <CardContent className="p-4 space-y-4">
+                <h3 className="font-semibold flex items-center gap-2"><Image className="w-4 h-4 text-primary" /> Logo Ball Media</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <p className="text-xs text-muted-foreground">Promo Image</p>
+                    {logoImage && <img src={logoImage} alt="Logo" className="w-full h-24 object-cover rounded-lg" />}
+                    <Button variant="outline" size="sm" className="w-full" disabled={logoUploading} onClick={() => document.getElementById("logo-img-input")?.click()}>
+                      <Image className="w-4 h-4 mr-1" /> {logoUploading ? "Uploading..." : "Upload Image"}
+                    </Button>
+                    <input id="logo-img-input" type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadLogoMedia(f, "image"); }} />
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-xs text-muted-foreground">Promo Video</p>
+                    {logoVideo && <video src={logoVideo} className="w-full h-24 object-cover rounded-lg" muted />}
+                    <Button variant="outline" size="sm" className="w-full" disabled={logoUploading} onClick={() => document.getElementById("logo-vid-input")?.click()}>
+                      <Video className="w-4 h-4 mr-1" /> {logoUploading ? "Uploading..." : "Upload Video"}
+                    </Button>
+                    <input id="logo-vid-input" type="file" accept="video/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadLogoMedia(f, "video"); }} />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <div className="space-y-2">
+              {offers.map((o) => (
+                <Card key={o.id} className="border-border/50 bg-card/50 backdrop-blur-sm">
+                  <CardContent className="p-4 flex items-center justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <Badge variant={o.type === "free" ? "secondary" : "outline"} className={o.type === "free" ? "bg-success/20 text-success border-0" : ""}>
+                          {o.type === "free" ? "🎁 Free" : "🏷️ Offer"}
+                        </Badge>
+                        <p className="font-medium text-sm truncate">{o.title}</p>
+                        {!o.is_active && <Badge variant="secondary" className="text-xs">Hidden</Badge>}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {o.price_points ? `${o.price_points} pts` : "Free"} · {o.duration_days ? `${o.duration_days}d` : "—"}
+                        {o.key_code ? ` · Key: ${o.key_code.substring(0, 8)}...` : ""}
+                      </p>
+                    </div>
+                    <div className="flex gap-1 shrink-0">
+                      <Button variant="ghost" size="icon" title={o.is_active ? "Hide" : "Show"} onClick={() => toggleOfferActive(o)}>
+                        {o.is_active ? <CheckCircle className="w-4 h-4 text-success" /> : <XCircle className="w-4 h-4 text-muted-foreground" />}
+                      </Button>
+                      <Button variant="ghost" size="icon" onClick={() => { setEditOffer(o); setOfferForm({ title: o.title, description: o.description || "", type: o.type, price_points: o.price_points || 0, duration_days: o.duration_days || 0, key_code: o.key_code || "", is_active: o.is_active }); setOfferDialog(true); }}>
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" onClick={() => deleteOffer(o.id)}>
+                        <Trash2 className="w-4 h-4 text-destructive" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+              {offers.length === 0 && (
+                <div className="text-center py-10 text-muted-foreground">
+                  <Tag className="w-8 h-8 mx-auto mb-2 opacity-40" />
+                  <p className="text-sm">No offers yet. Add one above!</p>
+                </div>
+              )}
+            </div>
+          </TabsContent>
         </Tabs>
 
         {/* Product Dialog */}
@@ -701,6 +853,42 @@ const Admin = () => {
             <DialogFooter>
               <Button variant="outline" onClick={() => setResetDialog(false)}>Cancel</Button>
               <Button variant="destructive" onClick={performReset}>Yes, Reset</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Offer Dialog */}
+        <Dialog open={offerDialog} onOpenChange={setOfferDialog}>
+          <DialogContent className="bg-card/95 backdrop-blur-xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>{editOffer ? "Edit Offer" : offerForm.type === "free" ? "Add Free Key" : "Add Offer"}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              <div className="flex gap-2">
+                <Button size="sm" variant={offerForm.type === "offer" ? "default" : "outline"} onClick={() => setOfferForm({ ...offerForm, type: "offer" })}>
+                  <Tag className="w-3 h-3 mr-1" /> Offer
+                </Button>
+                <Button size="sm" variant={offerForm.type === "free" ? "default" : "outline"} onClick={() => setOfferForm({ ...offerForm, type: "free" })}>
+                  <Gift className="w-3 h-3 mr-1" /> Free Key
+                </Button>
+              </div>
+              <Input placeholder="Title *" value={offerForm.title} onChange={(e) => setOfferForm({ ...offerForm, title: e.target.value })} className="bg-background/50" />
+              <Input placeholder="Description (optional)" value={offerForm.description} onChange={(e) => setOfferForm({ ...offerForm, description: e.target.value })} className="bg-background/50" />
+              {offerForm.type === "offer" && (
+                <Input type="number" placeholder="Price (points)" value={offerForm.price_points} onChange={(e) => setOfferForm({ ...offerForm, price_points: parseInt(e.target.value) || 0 })} className="bg-background/50" />
+              )}
+              <Input type="number" placeholder="Duration (days)" value={offerForm.duration_days} onChange={(e) => setOfferForm({ ...offerForm, duration_days: parseInt(e.target.value) || 0 })} className="bg-background/50" />
+              {offerForm.type === "free" && (
+                <Input placeholder="Key Code (optional)" value={offerForm.key_code} onChange={(e) => setOfferForm({ ...offerForm, key_code: e.target.value })} className="bg-background/50 font-mono" />
+              )}
+              <div className="flex items-center gap-2">
+                <input type="checkbox" id="offer-active" checked={offerForm.is_active} onChange={(e) => setOfferForm({ ...offerForm, is_active: e.target.checked })} />
+                <label htmlFor="offer-active" className="text-sm">Active (visible to users)</label>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setOfferDialog(false)}>Cancel</Button>
+              <Button onClick={saveOffer} disabled={!offerForm.title}>Save</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
