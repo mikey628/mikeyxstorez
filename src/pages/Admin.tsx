@@ -15,7 +15,7 @@ import {
   Users, Package, Key, Plus, Trash2, Edit, Search,
   Coins, Download, Ban, Shield, CheckCircle, XCircle, Upload,
   LogOut, Link as LinkIcon, Globe, Clock, Power, AlertTriangle, RotateCcw,
-  Tag, Gift, Image, Video,
+  Tag, Gift, Image, Video, QrCode, CreditCard, Eye, ExternalLink,
 } from "lucide-react";
 import { Navigate } from "react-router-dom";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
@@ -33,8 +33,24 @@ const Admin = () => {
   const [searchUser, setSearchUser] = useState("");
   const [socialLinks, setSocialLinks] = useState<Record<string, string>>({ whatsapp_link: "", tiktok_link: "", discord_link: "" });
   const [maintenanceMode, setMaintenanceMode] = useState(false);
+  const [requireApproval, setRequireApproval] = useState(true);
   const [resetDialog, setResetDialog] = useState(false);
   const [resetType, setResetType] = useState<"keys" | "points" | "all">("all");
+
+  // Topup management
+  const [topupRequests, setTopupRequests] = useState<any[]>([]);
+  const [topupPackages, setTopupPackages] = useState<any[]>([]);
+  const [topupSettings, setTopupSettings] = useState({
+    payment_method: "qr",
+    processing_time: "5-30 minutes",
+    qr_url: "",
+  });
+  const [topupQrFile, setTopupQrFile] = useState<File | null>(null);
+  const [qrUploading, setQrUploading] = useState(false);
+  const [pkgDialog, setPkgDialog] = useState(false);
+  const [editPkg, setEditPkg] = useState<any>(null);
+  const [pkgForm, setPkgForm] = useState({ label: "", price: 0, duration_days: 0 });
+  const [proofViewUrl, setProofViewUrl] = useState<string | null>(null);
 
   // Product dialog
   const [productDialog, setProductDialog] = useState(false);
@@ -85,23 +101,35 @@ const Admin = () => {
       supabase.from("site_settings").select("*"),
     ]);
     const { data: offerData } = await supabase.from("offers").select("*").order("sort_order");
+    const { data: topupReqs } = await supabase.from("topup_requests").select("*").order("created_at", { ascending: false });
+    const { data: topupPkgs } = await supabase.from("topup_packages").select("*").order("sort_order");
 
     setProducts(prods || []);
     setTransactions(txns || []);
     setKeys(allKeys || []);
     setUsers(allUsers || []);
     setOffers(offerData || []);
+    setTopupRequests(topupReqs || []);
+    setTopupPackages(topupPkgs || []);
 
     const links: Record<string, string> = { whatsapp_link: "", tiktok_link: "", discord_link: "" };
     let mMode = false;
+    let reqApproval = true;
+    const ts = { payment_method: "qr", processing_time: "5-30 minutes", qr_url: "" };
     (settings || []).forEach((s: any) => {
       if (s.key === "maintenance_mode") mMode = s.value === "true";
+      else if (s.key === "require_approval") reqApproval = s.value !== "false";
       else if (s.key === "logo_image_url") setLogoImage(s.value || "");
       else if (s.key === "logo_video_url") setLogoVideo(s.value || "");
+      else if (s.key === "topup_payment_method") ts.payment_method = s.value || "qr";
+      else if (s.key === "topup_processing_time") ts.processing_time = s.value || "5-30 minutes";
+      else if (s.key === "topup_qr_url") ts.qr_url = s.value || "";
       else links[s.key] = s.value || "";
     });
     setSocialLinks(links);
     setMaintenanceMode(mMode);
+    setRequireApproval(reqApproval);
+    setTopupSettings(ts);
 
     const totalSales = (txns || []).filter((t: any) => t.type === "purchase").length;
     const totalPoints = (allUsers || []).reduce((s: number, u: any) => s + (u.wallet_points || 0), 0);
@@ -285,6 +313,57 @@ const Admin = () => {
     toast.success(newVal ? "Maintenance mode ON — site is offline for users" : "Maintenance mode OFF — site is live");
   };
 
+  const toggleRequireApproval = async () => {
+    const newVal = !requireApproval;
+    await supabase.from("site_settings").update({ value: String(newVal) }).eq("key", "require_approval");
+    setRequireApproval(newVal);
+    toast.success(newVal ? "Login approval REQUIRED — new users need admin approval" : "Login approval OFF — all users can login freely");
+  };
+
+  const saveTopupSettings = async () => {
+    const updates = [
+      { key: "topup_payment_method", value: topupSettings.payment_method },
+      { key: "topup_processing_time", value: topupSettings.processing_time },
+    ];
+    for (const u of updates) {
+      await supabase.from("site_settings").update({ value: u.value }).eq("key", u.key);
+    }
+    toast.success("Topup settings saved!");
+  };
+
+  const uploadTopupQr = async (file: File) => {
+    setQrUploading(true);
+    const path = `topup_qr_${Date.now()}.${file.name.split(".").pop()}`;
+    const { error } = await supabase.storage.from("topup-qr").upload(path, file, { upsert: true });
+    if (error) { toast.error("Upload failed"); setQrUploading(false); return; }
+    const { data: { publicUrl } } = supabase.storage.from("topup-qr").getPublicUrl(path);
+    await supabase.from("site_settings").update({ value: publicUrl }).eq("key", "topup_qr_url");
+    setTopupSettings(s => ({ ...s, qr_url: publicUrl }));
+    toast.success("QR code updated!");
+    setQrUploading(false);
+  };
+
+  const saveTopupPackage = async () => {
+    if (!pkgForm.label || !pkgForm.price) { toast.error("Fill all fields"); return; }
+    if (editPkg) {
+      await supabase.from("topup_packages").update(pkgForm).eq("id", editPkg.id);
+      toast.success("Package updated");
+    } else {
+      await supabase.from("topup_packages").insert(pkgForm);
+      toast.success("Package added");
+    }
+    setPkgDialog(false);
+    setEditPkg(null);
+    setPkgForm({ label: "", price: 0, duration_days: 0 });
+    fetchAll();
+  };
+
+  const updateTopupStatus = async (id: string, status: string) => {
+    await supabase.from("topup_requests").update({ status }).eq("id", id);
+    toast.success(`Request marked as ${status}`);
+    fetchAll();
+  };
+
   const performReset = async () => {
     if (resetType === "keys" || resetType === "all") {
       // Delete all unused keys and mark used ones
@@ -404,12 +483,13 @@ const Admin = () => {
         </div>
 
         <Tabs defaultValue="products">
-          <TabsList className="grid w-full grid-cols-6 bg-card/50 backdrop-blur-sm">
+          <TabsList className="flex flex-wrap gap-1 bg-card/50 backdrop-blur-sm h-auto p-1">
             <TabsTrigger value="products">Products</TabsTrigger>
             <TabsTrigger value="users">Users</TabsTrigger>
             <TabsTrigger value="keys">Keys</TabsTrigger>
             <TabsTrigger value="transactions">Txns</TabsTrigger>
             <TabsTrigger value="offers">Offers</TabsTrigger>
+            <TabsTrigger value="topup">Topup</TabsTrigger>
             <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
 
@@ -575,8 +655,8 @@ const Admin = () => {
             {/* Maintenance Mode */}
             <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
               <CardContent className="p-6 space-y-4">
-                <h3 className="font-semibold flex items-center gap-2"><Power className="w-4 h-4" /> Server / Maintenance</h3>
-                <div className="flex items-center justify-between">
+                <h3 className="font-semibold flex items-center gap-2"><Power className="w-4 h-4" /> Server Controls</h3>
+                <div className="flex items-center justify-between py-2 border-b border-border/30">
                   <div>
                     <p className="text-sm font-medium">{maintenanceMode ? "🔴 Site is OFFLINE" : "🟢 Site is ONLINE"}</p>
                     <p className="text-xs text-muted-foreground">Toggle maintenance mode for all users</p>
@@ -587,6 +667,21 @@ const Admin = () => {
                   >
                     <Power className="w-4 h-4 mr-1" />
                     {maintenanceMode ? "Go Online" : "Go Offline"}
+                  </Button>
+                </div>
+                <div className="flex items-center justify-between py-2">
+                  <div>
+                    <p className="text-sm font-medium">{requireApproval ? "🔐 Login Approval: ON" : "🔓 Login Approval: OFF"}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {requireApproval ? "New users need admin approval to login" : "All registered users can login freely"}
+                    </p>
+                  </div>
+                  <Button
+                    variant={requireApproval ? "default" : "outline"}
+                    onClick={toggleRequireApproval}
+                  >
+                    <Shield className="w-4 h-4 mr-1" />
+                    {requireApproval ? "Disable" : "Enable"}
                   </Button>
                 </div>
               </CardContent>
@@ -692,6 +787,158 @@ const Admin = () => {
               )}
             </div>
           </TabsContent>
+
+          {/* TOPUP TAB */}
+          <TabsContent value="topup" className="space-y-4">
+            {/* Topup Settings */}
+            <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
+              <CardContent className="p-4 space-y-4">
+                <h3 className="font-semibold flex items-center gap-2"><QrCode className="w-4 h-4 text-primary" /> Topup Settings</h3>
+                
+                {/* Payment Method Toggle */}
+                <div className="flex items-center justify-between py-2 border-b border-border/30">
+                  <div>
+                    <p className="text-sm font-medium">Payment Method</p>
+                    <p className="text-xs text-muted-foreground">Choose how users pay</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant={topupSettings.payment_method === "qr" ? "default" : "outline"}
+                      onClick={() => setTopupSettings(s => ({ ...s, payment_method: "qr" }))}
+                    >
+                      <QrCode className="w-3 h-3 mr-1" /> QR Pay
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={topupSettings.payment_method === "points" ? "default" : "outline"}
+                      onClick={() => setTopupSettings(s => ({ ...s, payment_method: "points" }))}
+                    >
+                      <CreditCard className="w-3 h-3 mr-1" /> Points
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Processing Time */}
+                <div className="space-y-2">
+                  <label className="text-sm text-muted-foreground">Processing Time (shown to users)</label>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="e.g. 5-30 minutes"
+                      value={topupSettings.processing_time}
+                      onChange={(e) => setTopupSettings(s => ({ ...s, processing_time: e.target.value }))}
+                      className="bg-background/50"
+                    />
+                    <Button onClick={saveTopupSettings}>Save</Button>
+                  </div>
+                </div>
+
+                {/* QR Upload */}
+                {topupSettings.payment_method === "qr" && (
+                  <div className="space-y-2">
+                    <label className="text-sm text-muted-foreground">Payment QR Code Image</label>
+                    {topupSettings.qr_url && (
+                      <img src={topupSettings.qr_url} alt="Payment QR" className="w-32 h-32 object-contain rounded-lg border border-border/50" />
+                    )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={qrUploading}
+                      onClick={() => document.getElementById("topup-qr-input")?.click()}
+                    >
+                      <Upload className="w-4 h-4 mr-1" /> {qrUploading ? "Uploading..." : "Upload QR Image"}
+                    </Button>
+                    <input
+                      id="topup-qr-input"
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadTopupQr(f); }}
+                    />
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Topup Packages */}
+            <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
+              <CardContent className="p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-semibold flex items-center gap-2"><Package className="w-4 h-4 text-primary" /> Packages</h3>
+                  <Button size="sm" onClick={() => { setEditPkg(null); setPkgForm({ label: "", price: 0, duration_days: 0 }); setPkgDialog(true); }}>
+                    <Plus className="w-4 h-4 mr-1" /> Add
+                  </Button>
+                </div>
+                <div className="space-y-2">
+                  {topupPackages.map((pkg) => (
+                    <div key={pkg.id} className="flex items-center justify-between p-3 rounded-lg bg-background/50 border border-border/30">
+                      <div>
+                        <p className="font-medium text-sm">{pkg.label}</p>
+                        <p className="text-xs text-muted-foreground">{pkg.price} pts · {pkg.duration_days}d</p>
+                      </div>
+                      <div className="flex gap-1">
+                        <Button variant="ghost" size="icon" onClick={() => { setEditPkg(pkg); setPkgForm({ label: pkg.label, price: pkg.price, duration_days: pkg.duration_days || 0 }); setPkgDialog(true); }}>
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={async () => { await supabase.from("topup_packages").delete().eq("id", pkg.id); fetchAll(); }}>
+                          <Trash2 className="w-4 h-4 text-destructive" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Topup Requests */}
+            <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
+              <CardContent className="p-4 space-y-3">
+                <h3 className="font-semibold flex items-center gap-2"><Coins className="w-4 h-4 text-primary" /> Payment Requests ({topupRequests.filter(r => r.status === "pending").length} pending)</h3>
+                <div className="space-y-2">
+                  {topupRequests.map((req) => (
+                    <div key={req.id} className={`p-3 rounded-lg border ${req.status === "pending" ? "border-warning/40 bg-warning/5" : req.status === "approved" ? "border-success/40 bg-success/5" : "border-destructive/40 bg-destructive/5"}`}>
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <Badge variant={req.status === "pending" ? "outline" : req.status === "approved" ? "default" : "destructive"} className="text-xs">
+                              {req.status}
+                            </Badge>
+                            {req.fake_score >= 50 && (
+                              <Badge variant="destructive" className="text-xs">⚠️ Suspicious</Badge>
+                            )}
+                            <span className="text-xs text-muted-foreground">{new Date(req.created_at).toLocaleDateString()}</span>
+                          </div>
+                          <p className="font-medium text-sm mt-1">UID: <span className="font-mono">{req.game_uid}</span></p>
+                          <p className="text-xs text-muted-foreground">{req.duration_label} · {req.amount_paid} pts</p>
+                        </div>
+                        <div className="flex gap-1 shrink-0 flex-col sm:flex-row">
+                          {req.payment_proof_url && (
+                            <Button variant="ghost" size="icon" title="View proof" onClick={() => setProofViewUrl(req.payment_proof_url)}>
+                              <Eye className="w-4 h-4" />
+                            </Button>
+                          )}
+                          {req.status === "pending" && (
+                            <>
+                              <Button variant="ghost" size="icon" title="Approve" onClick={() => updateTopupStatus(req.id, "approved")}>
+                                <CheckCircle className="w-4 h-4 text-success" />
+                              </Button>
+                              <Button variant="ghost" size="icon" title="Reject" onClick={() => updateTopupStatus(req.id, "rejected")}>
+                                <XCircle className="w-4 h-4 text-destructive" />
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  {topupRequests.length === 0 && (
+                    <p className="text-center text-muted-foreground text-sm py-6">No topup requests yet.</p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
         </Tabs>
 
         {/* Product Dialog */}
@@ -890,6 +1137,41 @@ const Admin = () => {
               <Button variant="outline" onClick={() => setOfferDialog(false)}>Cancel</Button>
               <Button onClick={saveOffer} disabled={!offerForm.title}>Save</Button>
             </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Topup Package Dialog */}
+        <Dialog open={pkgDialog} onOpenChange={setPkgDialog}>
+          <DialogContent className="bg-card/95 backdrop-blur-xl">
+            <DialogHeader>
+              <DialogTitle>{editPkg ? "Edit Package" : "Add Package"}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              <Input placeholder="Label (e.g. Weekly Lite)" value={pkgForm.label} onChange={(e) => setPkgForm({ ...pkgForm, label: e.target.value })} className="bg-background/50" />
+              <Input type="number" placeholder="Price (points)" value={pkgForm.price} onChange={(e) => setPkgForm({ ...pkgForm, price: Number(e.target.value) })} className="bg-background/50" />
+              <Input type="number" placeholder="Duration (days)" value={pkgForm.duration_days} onChange={(e) => setPkgForm({ ...pkgForm, duration_days: Number(e.target.value) })} className="bg-background/50" />
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setPkgDialog(false)}>Cancel</Button>
+              <Button onClick={saveTopupPackage}>Save</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Proof View Dialog */}
+        <Dialog open={!!proofViewUrl} onOpenChange={() => setProofViewUrl(null)}>
+          <DialogContent className="bg-card/95 backdrop-blur-xl max-w-xl">
+            <DialogHeader>
+              <DialogTitle>Payment Proof</DialogTitle>
+            </DialogHeader>
+            {proofViewUrl && (
+              <div className="space-y-3">
+                <img src={proofViewUrl} alt="Payment proof" className="w-full max-h-96 object-contain rounded-lg" />
+                <Button variant="outline" className="w-full" onClick={() => window.open(proofViewUrl, "_blank")}>
+                  <ExternalLink className="w-4 h-4 mr-1" /> Open Full Image
+                </Button>
+              </div>
+            )}
           </DialogContent>
         </Dialog>
       </div>

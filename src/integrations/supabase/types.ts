@@ -208,6 +208,87 @@ export type Database = {
         }
         Relationships: []
       }
+      topup_packages: {
+        Row: {
+          created_at: string
+          duration_days: number | null
+          id: string
+          is_active: boolean
+          label: string
+          price: number
+          sort_order: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          duration_days?: number | null
+          id?: string
+          is_active?: boolean
+          label: string
+          price?: number
+          sort_order?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          duration_days?: number | null
+          id?: string
+          is_active?: boolean
+          label?: string
+          price?: number
+          sort_order?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      topup_requests: {
+        Row: {
+          admin_note: string | null
+          amount_paid: number
+          created_at: string
+          duration_label: string
+          fake_score: number | null
+          game_uid: string
+          id: string
+          payment_method: string
+          payment_proof_url: string | null
+          product_name: string
+          status: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          admin_note?: string | null
+          amount_paid?: number
+          created_at?: string
+          duration_label: string
+          fake_score?: number | null
+          game_uid: string
+          id?: string
+          payment_method?: string
+          payment_proof_url?: string | null
+          product_name: string
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          admin_note?: string | null
+          amount_paid?: number
+          created_at?: string
+          duration_label?: string
+          fake_score?: number | null
+          game_uid?: string
+          id?: string
+          payment_method?: string
+          payment_proof_url?: string | null
+          product_name?: string
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       transactions: {
         Row: {
           amount: number
