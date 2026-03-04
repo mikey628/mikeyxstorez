@@ -13,6 +13,7 @@ import MyKeys from "./pages/MyKeys";
 import Transactions from "./pages/Transactions";
 import Admin from "./pages/Admin";
 import Profile from "./pages/Profile";
+import Topup from "./pages/Topup";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -43,6 +44,7 @@ const App = () => (
               <Route path="/transactions" element={<ProtectedRoute><Transactions /></ProtectedRoute>} />
               <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
               <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+              <Route path="/topup" element={<Topup />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </AuthProvider>
