@@ -9,14 +9,17 @@ import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import {
-  Coins, Upload, CheckCircle, Clock, Package, User, CreditCard, QrCode, AlertTriangle,
+  Coins, Upload, CheckCircle, Clock, Package, User, CreditCard, QrCode,
+  AlertTriangle, Download, Server, ChevronRight, Image as ImageIcon,
 } from "lucide-react";
 
 const Topup = () => {
   const { user, profile } = useAuth();
   const [packages, setPackages] = useState<any[]>([]);
+  const [servers, setServers] = useState<any[]>([]);
   const [settings, setSettings] = useState<Record<string, string>>({});
   const [selectedPkg, setSelectedPkg] = useState<any>(null);
+  const [selectedServer, setSelectedServer] = useState<any>(null);
   const [gameUid, setGameUid] = useState("");
   const [uidVerified, setUidVerified] = useState(false);
   const [verifyLoading, setVerifyLoading] = useState(false);
@@ -25,15 +28,18 @@ const Topup = () => {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [fakeWarning, setFakeWarning] = useState(false);
+  const [selectedQr, setSelectedQr] = useState<"esewa" | "khalti" | "bank">("esewa");
   const proofRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const fetchData = async () => {
-      const [{ data: pkgs }, { data: siteSettings }] = await Promise.all([
+      const [{ data: pkgs }, { data: srvs }, { data: siteSettings }] = await Promise.all([
         supabase.from("topup_packages").select("*").order("sort_order"),
+        supabase.from("topup_servers").select("*").order("sort_order"),
         supabase.from("site_settings").select("*"),
       ]);
       setPackages(pkgs || []);
+      setServers(srvs || []);
       const s: Record<string, string> = {};
       (siteSettings || []).forEach((x: any) => { s[x.key] = x.value || ""; });
       setSettings(s);
@@ -43,12 +49,20 @@ const Topup = () => {
 
   const paymentMethod = settings["topup_payment_method"] || "qr";
   const processingTime = settings["topup_processing_time"] || "5-30 minutes";
-  const qrUrl = settings["topup_qr_url"] || "";
+
+  const qrOptions = [
+    { key: "esewa" as const, label: "eSewa", color: "text-green-500", bg: "bg-green-500/10 border-green-500/40", url: settings["esewa_qr_url"] },
+    { key: "khalti" as const, label: "Khalti", color: "text-purple-500", bg: "bg-purple-500/10 border-purple-500/40", url: settings["khalti_qr_url"] },
+    { key: "bank" as const, label: "Bank", color: "text-blue-500", bg: "bg-blue-500/10 border-blue-500/40", url: settings["bank_qr_url"] },
+  ].filter(q => q.url);
+
+  const activeQrUrl = qrOptions.find(q => q.key === selectedQr)?.url || qrOptions[0]?.url || "";
 
   const handleVerifyUid = async () => {
     if (!gameUid.trim()) { toast.error("Enter your Game UID"); return; }
+    if (!selectedServer) { toast.error("Select a server first"); return; }
     setVerifyLoading(true);
-    await new Promise(r => setTimeout(r, 1000));
+    await new Promise(r => setTimeout(r, 1200));
     setUidVerified(true);
     setVerifyLoading(false);
     toast.success("UID verified! ✅");
@@ -57,39 +71,50 @@ const Topup = () => {
   const handleProofChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
-    // Basic fake detection: check file size and type
     let fakeSuspicion = 0;
-    if (file.size < 10000) fakeSuspicion += 50; // suspiciously small
-    if (file.type === "image/png" && file.size < 50000) fakeSuspicion += 30; // tiny PNG
-    if (file.name.includes("screenshot") === false && file.size < 30000) fakeSuspicion += 20;
-
+    if (file.size < 10000) fakeSuspicion += 50;
+    if (file.type === "image/png" && file.size < 50000) fakeSuspicion += 30;
+    if (!file.name.includes("screenshot") && file.size < 30000) fakeSuspicion += 20;
     setFakeWarning(fakeSuspicion >= 50);
     setProofFile(file);
-    const url = URL.createObjectURL(file);
-    setProofPreview(url);
+    setProofPreview(URL.createObjectURL(file));
+  };
+
+  const handleDownloadQr = () => {
+    if (!activeQrUrl) return;
+    const a = document.createElement("a");
+    a.href = activeQrUrl;
+    a.download = `${selectedQr}_qr.png`;
+    a.target = "_blank";
+    a.click();
   };
 
   const handleSubmit = async () => {
     if (!selectedPkg) { toast.error("Select a package"); return; }
+    if (!selectedServer) { toast.error("Select a server"); return; }
     if (!uidVerified || !gameUid.trim()) { toast.error("Verify your UID first"); return; }
     if (paymentMethod === "qr" && !proofFile) { toast.error("Upload payment proof screenshot"); return; }
 
     setSubmitting(true);
     try {
       let proofUrl: string | null = null;
+      let fakeScore = 0;
 
       if (proofFile) {
+        if (proofFile.size < 10000) fakeScore += 50;
+        if (proofFile.type === "image/png" && proofFile.size < 50000) fakeScore += 30;
+
         const path = `proof_${Date.now()}_${proofFile.name}`;
         const { error: uploadErr } = await supabase.storage.from("payment-proofs").upload(path, proofFile);
         if (uploadErr) throw uploadErr;
         const { data: { publicUrl } } = supabase.storage.from("payment-proofs").getPublicUrl(path);
         proofUrl = publicUrl;
 
-        // Notify via edge function (email)
         supabase.functions.invoke("notify-payment-proof", {
           body: {
             game_uid: gameUid,
+            game_name: `User@${gameUid}`,
+            server: selectedServer?.name || "Unknown",
             package: selectedPkg.label,
             amount: selectedPkg.price,
             proof_url: proofUrl,
@@ -98,23 +123,19 @@ const Topup = () => {
         }).catch(() => {});
       }
 
-      // Calculate fake score
-      let fakeScore = 0;
-      if (proofFile) {
-        if (proofFile.size < 10000) fakeScore += 50;
-        if (proofFile.type === "image/png" && proofFile.size < 50000) fakeScore += 30;
-      }
-
       const { error } = await supabase.from("topup_requests").insert({
         user_id: user?.id || null,
         game_uid: gameUid,
-        product_name: "Topup",
+        game_name: `User@${gameUid}`,
+        product_name: selectedPkg.label,
         duration_label: selectedPkg.label,
         amount_paid: selectedPkg.price,
-        payment_method: paymentMethod,
+        payment_method: paymentMethod === "qr" ? `qr_${selectedQr}` : "points",
         payment_proof_url: proofUrl,
         status: "pending",
         fake_score: fakeScore,
+        server_id: selectedServer?.id || null,
+        server_name: selectedServer?.name || null,
       });
       if (error) throw error;
 
@@ -126,6 +147,17 @@ const Topup = () => {
     setSubmitting(false);
   };
 
+  const reset = () => {
+    setSubmitted(false);
+    setSelectedPkg(null);
+    setSelectedServer(null);
+    setGameUid("");
+    setUidVerified(false);
+    setProofFile(null);
+    setProofPreview(null);
+    setFakeWarning(false);
+  };
+
   if (submitted) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -133,18 +165,35 @@ const Topup = () => {
         <motion.div
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          className="text-center space-y-4 relative z-10"
+          className="text-center space-y-4 relative z-10 max-w-sm"
         >
           <div className="w-20 h-20 mx-auto rounded-full bg-success/20 flex items-center justify-center">
             <CheckCircle className="w-10 h-10 text-success" />
           </div>
-          <h1 className="text-2xl font-bold text-foreground">Request Submitted!</h1>
-          <p className="text-muted-foreground max-w-sm">
-            Your topup request has been received. Processing time: <strong>{processingTime}</strong>
+          <h1 className="text-2xl font-bold">Request Submitted! 🎉</h1>
+          <p className="text-muted-foreground text-sm">
+            Your topup request has been received.<br />
+            Processing time: <strong>{processingTime}</strong>
           </p>
-          <Button onClick={() => { setSubmitted(false); setSelectedPkg(null); setGameUid(""); setUidVerified(false); setProofFile(null); setProofPreview(null); }}>
-            Submit Another
-          </Button>
+          <div className="bg-card/50 rounded-xl p-4 text-left space-y-2 border border-border/50">
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Package</span>
+              <span className="font-medium">{selectedPkg?.label}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">UID</span>
+              <span className="font-mono">{gameUid}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Server</span>
+              <span>{selectedServer?.flag} {selectedServer?.name}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Status</span>
+              <Badge variant="outline" className="text-warning border-warning/50">Pending</Badge>
+            </div>
+          </div>
+          <Button onClick={reset} className="w-full">Submit Another Request</Button>
         </motion.div>
       </div>
     );
@@ -153,68 +202,63 @@ const Topup = () => {
   return (
     <div className="min-h-screen bg-background">
       <AnimatedBackground />
-      <div className="relative z-10 max-w-lg mx-auto px-4 py-8 space-y-6">
+      <div className="relative z-10 max-w-lg mx-auto px-4 py-8 space-y-5">
         {/* Header */}
         <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="text-center space-y-2">
           <div className="w-14 h-14 mx-auto rounded-2xl bg-primary/20 flex items-center justify-center">
             <Coins className="w-7 h-7 text-primary" />
           </div>
           <h1 className="text-3xl font-bold">Top Up</h1>
-          <p className="text-muted-foreground text-sm">Select a package and complete payment</p>
+          <p className="text-muted-foreground text-sm">Fill in your details and complete payment</p>
           <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground bg-muted/50 rounded-full px-4 py-1.5 w-fit mx-auto">
             <Clock className="w-3 h-3" />
-            Processing time: <strong>{processingTime}</strong>
+            Processing: <strong>{processingTime}</strong>
           </div>
         </motion.div>
 
-        {/* Step 1: Select Package */}
+        {/* Step 1: Server Selection */}
+        {servers.length > 0 && (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
+            <Card className="border-border/50 bg-card/50 backdrop-blur-md">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Server className="w-4 h-4 text-primary" /> Step 1: Select Server
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {servers.map((srv) => (
+                  <motion.button
+                    key={srv.id}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => { setSelectedServer(srv); setUidVerified(false); }}
+                    className={`p-3 rounded-xl border-2 transition-all text-center ${
+                      selectedServer?.id === srv.id
+                        ? "border-primary bg-primary/10"
+                        : "border-border/50 bg-background/50 hover:border-primary/50"
+                    }`}
+                  >
+                    {srv.logo_url ? (
+                      <img src={srv.logo_url} alt={srv.name} className="w-8 h-8 object-contain mx-auto mb-1 rounded" />
+                    ) : (
+                      <span className="text-2xl block mb-1">{srv.flag || "🌐"}</span>
+                    )}
+                    <p className="text-xs font-medium truncate">{srv.name}</p>
+                    {selectedServer?.id === srv.id && (
+                      <CheckCircle className="w-3 h-3 text-primary mx-auto mt-1" />
+                    )}
+                  </motion.button>
+                ))}
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+
+        {/* Step 2: UID */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
           <Card className="border-border/50 bg-card/50 backdrop-blur-md">
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
-                <Package className="w-4 h-4 text-primary" /> Step 1: Choose Package
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="grid grid-cols-1 gap-3">
-              {packages.map((pkg) => (
-                <motion.button
-                  key={pkg.id}
-                  whileTap={{ scale: 0.97 }}
-                  onClick={() => setSelectedPkg(pkg)}
-                  className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
-                    selectedPkg?.id === pkg.id
-                      ? "border-primary bg-primary/10"
-                      : "border-border/50 bg-background/50 hover:border-primary/50"
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-semibold">{pkg.label}</p>
-                      {pkg.duration_days && (
-                        <p className="text-xs text-muted-foreground">{pkg.duration_days} days</p>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-lg font-bold text-primary">{pkg.price}</span>
-                      <span className="text-xs text-muted-foreground">pts</span>
-                      {selectedPkg?.id === pkg.id && <CheckCircle className="w-4 h-4 text-primary" />}
-                    </div>
-                  </div>
-                </motion.button>
-              ))}
-              {packages.length === 0 && (
-                <p className="text-center text-muted-foreground text-sm py-4">No packages available yet.</p>
-              )}
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* Step 2: Enter UID */}
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
-          <Card className="border-border/50 bg-card/50 backdrop-blur-md">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <User className="w-4 h-4 text-primary" /> Step 2: Enter Game UID
+                <User className="w-4 h-4 text-primary" /> {servers.length > 0 ? "Step 2:" : "Step 1:"} Enter Game UID
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -223,54 +267,133 @@ const Topup = () => {
                   placeholder="Your Game UID..."
                   value={gameUid}
                   onChange={(e) => { setGameUid(e.target.value); setUidVerified(false); }}
-                  className="bg-background/50"
+                  className="bg-background/50 font-mono"
                 />
                 <Button
                   variant={uidVerified ? "outline" : "default"}
                   onClick={handleVerifyUid}
-                  disabled={verifyLoading}
+                  disabled={verifyLoading || !gameUid.trim()}
                   className="shrink-0"
                 >
                   {verifyLoading ? "..." : uidVerified ? "✓ Done" : "Verify"}
                 </Button>
               </div>
               {uidVerified && (
-                <div className="flex items-center gap-2 text-success text-sm">
-                  <CheckCircle className="w-4 h-4" />
-                  UID <strong>{gameUid}</strong> verified!
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="bg-success/10 border border-success/30 rounded-xl p-3 space-y-1"
+                >
+                  <div className="flex items-center gap-2 text-success text-sm font-medium">
+                    <CheckCircle className="w-4 h-4" /> UID Verified
+                  </div>
+                  <div className="text-xs text-muted-foreground space-y-0.5">
+                    <p>UID: <span className="font-mono text-foreground">{gameUid}</span></p>
+                    {selectedServer && <p>Server: <span className="text-foreground">{selectedServer.flag} {selectedServer.name}</span></p>}
+                    <p>Status: <span className="text-success">✅ Active</span></p>
+                  </div>
+                </motion.div>
+              )}
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* Step 3: Package Selection */}
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
+          <Card className="border-border/50 bg-card/50 backdrop-blur-md">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Package className="w-4 h-4 text-primary" /> {servers.length > 0 ? "Step 3:" : "Step 2:"} Choose Package
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="grid grid-cols-2 gap-3">
+              {packages.map((pkg) => (
+                <motion.button
+                  key={pkg.id}
+                  whileTap={{ scale: 0.96 }}
+                  onClick={() => setSelectedPkg(pkg)}
+                  className={`text-left p-3 rounded-xl border-2 transition-all ${
+                    selectedPkg?.id === pkg.id
+                      ? "border-primary bg-primary/10"
+                      : "border-border/50 bg-background/50 hover:border-primary/50"
+                  }`}
+                >
+                  {pkg.image_url ? (
+                    <img src={pkg.image_url} alt={pkg.label} className="w-full h-16 object-cover rounded-lg mb-2" />
+                  ) : (
+                    <div className="w-full h-16 rounded-lg mb-2 bg-primary/5 flex items-center justify-center">
+                      <Package className="w-6 h-6 text-primary/40" />
+                    </div>
+                  )}
+                  <p className="font-semibold text-sm">{pkg.label}</p>
+                  {pkg.description && <p className="text-xs text-muted-foreground truncate">{pkg.description}</p>}
+                  {pkg.duration_days && <p className="text-xs text-muted-foreground">{pkg.duration_days} days</p>}
+                  <p className="text-primary font-bold text-sm mt-1">${pkg.price}</p>
+                  {selectedPkg?.id === pkg.id && (
+                    <div className="flex items-center gap-1 text-primary text-xs mt-1">
+                      <CheckCircle className="w-3 h-3" /> Selected
+                    </div>
+                  )}
+                </motion.button>
+              ))}
+              {packages.length === 0 && (
+                <div className="col-span-2 text-center py-6 text-muted-foreground text-sm">
+                  No packages available yet.
                 </div>
               )}
             </CardContent>
           </Card>
         </motion.div>
 
-        {/* Step 3: Payment */}
+        {/* Step 4: Payment */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
           <Card className="border-border/50 bg-card/50 backdrop-blur-md">
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
                 {paymentMethod === "qr" ? <QrCode className="w-4 h-4 text-primary" /> : <CreditCard className="w-4 h-4 text-primary" />}
-                Step 3: {paymentMethod === "qr" ? "Scan QR & Upload Proof" : "Pay with Points"}
+                {servers.length > 0 ? "Step 4:" : "Step 3:"} {paymentMethod === "qr" ? "Pay & Upload Proof" : "Pay with Points"}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               {paymentMethod === "qr" ? (
                 <>
-                  {qrUrl ? (
-                    <div className="text-center">
+                  {/* QR Method Tabs */}
+                  {qrOptions.length > 0 && (
+                    <div className="flex gap-2">
+                      {qrOptions.map((opt) => (
+                        <button
+                          key={opt.key}
+                          onClick={() => setSelectedQr(opt.key)}
+                          className={`flex-1 py-2 px-3 rounded-lg border-2 text-sm font-medium transition-all ${
+                            selectedQr === opt.key
+                              ? `${opt.bg} ${opt.color} border-current`
+                              : "border-border/50 text-muted-foreground hover:border-primary/40"
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {activeQrUrl ? (
+                    <div className="text-center space-y-3">
                       <img
-                        src={qrUrl}
+                        src={activeQrUrl}
                         alt="Payment QR Code"
-                        className="w-48 h-48 object-contain mx-auto rounded-xl border border-border/50"
+                        className="w-52 h-52 object-contain mx-auto rounded-xl border border-border/50 bg-white p-2"
                       />
-                      <p className="text-xs text-muted-foreground mt-2">
-                        Scan QR to pay · Amount: <strong>{selectedPkg?.price || "—"} pts worth</strong>
-                      </p>
+                      <div className="text-xs text-muted-foreground">
+                        Amount: <strong className="text-foreground">${selectedPkg?.price || "—"}</strong>
+                      </div>
+                      <Button variant="outline" size="sm" onClick={handleDownloadQr}>
+                        <Download className="w-3 h-3 mr-1" /> Download QR
+                      </Button>
                     </div>
                   ) : (
                     <div className="text-center py-6 text-muted-foreground">
                       <QrCode className="w-10 h-10 mx-auto mb-2 opacity-40" />
-                      <p className="text-sm">QR code will appear here</p>
+                      <p className="text-sm">QR code will be set by admin</p>
                     </div>
                   )}
 
@@ -303,7 +426,7 @@ const Topup = () => {
                   {fakeWarning && (
                     <div className="flex items-center gap-2 text-warning text-sm bg-warning/10 rounded-lg p-3">
                       <AlertTriangle className="w-4 h-4 shrink-0" />
-                      Image looks suspicious. Make sure to upload a real payment screenshot.
+                      Image looks suspicious. Upload a real payment screenshot.
                     </div>
                   )}
                 </>
@@ -311,11 +434,14 @@ const Topup = () => {
                 <div className="text-center py-6 space-y-2">
                   <CreditCard className="w-10 h-10 mx-auto text-primary/60" />
                   <p className="text-sm text-muted-foreground">
-                    You have <strong className="text-primary">{profile?.wallet_points ?? 0} points</strong>
+                    Your balance: <strong className="text-primary">{profile?.wallet_points ?? 0} pts</strong>
                   </p>
                   <p className="text-sm">
-                    This package costs <strong>{selectedPkg?.price || "—"} pts</strong>
+                    Package costs: <strong>{selectedPkg?.price || "—"} pts</strong>
                   </p>
+                  {selectedPkg && profile && profile.wallet_points < selectedPkg.price && (
+                    <p className="text-xs text-destructive">Insufficient points</p>
+                  )}
                 </div>
               )}
             </CardContent>
@@ -327,12 +453,16 @@ const Topup = () => {
           <Button
             className="w-full h-12 text-base font-semibold"
             onClick={handleSubmit}
-            disabled={submitting || !selectedPkg || !uidVerified}
+            disabled={submitting || !selectedPkg || !uidVerified || (servers.length > 0 && !selectedServer)}
           >
-            {submitting ? "Submitting..." : "Submit Top Up Request 🚀"}
+            {submitting ? "Submitting..." : (
+              <span className="flex items-center gap-2">
+                Confirm Top Up Request <ChevronRight className="w-4 h-4" />
+              </span>
+            )}
           </Button>
           <p className="text-center text-xs text-muted-foreground mt-2">
-            Processing time: {processingTime}
+            ⏱ Processing time: {processingTime}
           </p>
         </motion.div>
       </div>
