@@ -1332,12 +1332,71 @@ const Admin = () => {
             </DialogHeader>
             <div className="space-y-3">
               <Input placeholder="Label (e.g. Weekly Lite)" value={pkgForm.label} onChange={(e) => setPkgForm({ ...pkgForm, label: e.target.value })} className="bg-background/50" />
-              <Input type="number" placeholder="Price (points)" value={pkgForm.price} onChange={(e) => setPkgForm({ ...pkgForm, price: Number(e.target.value) })} className="bg-background/50" />
+              <Input placeholder="Description (optional)" value={pkgForm.description} onChange={(e) => setPkgForm({ ...pkgForm, description: e.target.value })} className="bg-background/50" />
+              <Input type="number" placeholder="Price ($)" value={pkgForm.price} onChange={(e) => setPkgForm({ ...pkgForm, price: Number(e.target.value) })} className="bg-background/50" />
               <Input type="number" placeholder="Duration (days)" value={pkgForm.duration_days} onChange={(e) => setPkgForm({ ...pkgForm, duration_days: Number(e.target.value) })} className="bg-background/50" />
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Product Image (optional)</label>
+                <div className="flex items-center gap-2">
+                  {(pkgImageFile ? URL.createObjectURL(pkgImageFile) : editPkg?.image_url) && (
+                    <img src={pkgImageFile ? URL.createObjectURL(pkgImageFile) : editPkg?.image_url} alt="pkg" className="w-12 h-12 object-cover rounded-lg" />
+                  )}
+                  <Button variant="outline" size="sm" onClick={() => document.getElementById("pkg-img-input")?.click()}>
+                    <Image className="w-3 h-3 mr-1" /> {pkgImageFile ? pkgImageFile.name.substring(0, 15) + "..." : "Upload Image"}
+                  </Button>
+                  <input id="pkg-img-input" type="file" accept="image/*" className="hidden" onChange={(e) => setPkgImageFile(e.target.files?.[0] || null)} />
+                </div>
+              </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setPkgDialog(false)}>Cancel</Button>
               <Button onClick={saveTopupPackage}>Save</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Server Dialog */}
+        <Dialog open={serverDialog} onOpenChange={setServerDialog}>
+          <DialogContent className="bg-card/95 backdrop-blur-xl">
+            <DialogHeader>
+              <DialogTitle>{editServer ? "Edit Server" : "Add Server"}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              <Input placeholder="Server Name (e.g. BD Server)" value={serverForm.name} onChange={(e) => setServerForm({ ...serverForm, name: e.target.value })} className="bg-background/50" />
+              <Input placeholder="Flag emoji (e.g. 🇧🇩)" value={serverForm.flag} onChange={(e) => setServerForm({ ...serverForm, flag: e.target.value })} className="bg-background/50 text-lg" />
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Server Logo (optional, replaces emoji)</label>
+                <div className="flex items-center gap-2">
+                  {(serverLogoFile ? URL.createObjectURL(serverLogoFile) : editServer?.logo_url) && (
+                    <img src={serverLogoFile ? URL.createObjectURL(serverLogoFile) : editServer?.logo_url} alt="logo" className="w-10 h-10 object-contain rounded-lg" />
+                  )}
+                  <Button variant="outline" size="sm" onClick={() => document.getElementById("server-logo-input")?.click()}>
+                    <Upload className="w-3 h-3 mr-1" /> Upload Logo
+                  </Button>
+                  <input id="server-logo-input" type="file" accept="image/*" className="hidden" onChange={(e) => setServerLogoFile(e.target.files?.[0] || null)} />
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setServerDialog(false)}>Cancel</Button>
+              <Button onClick={saveServer} disabled={serverUploading}>{serverUploading ? "Saving..." : "Save"}</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Topup Admin Dialog */}
+        <Dialog open={topupAdminDialog} onOpenChange={setTopupAdminDialog}>
+          <DialogContent className="bg-card/95 backdrop-blur-xl">
+            <DialogHeader>
+              <DialogTitle>Add Topup Admin</DialogTitle>
+              <DialogDescription>
+                Enter the email of a registered user to give them topup admin access. They can view and approve/reject payment requests only.
+              </DialogDescription>
+            </DialogHeader>
+            <Input placeholder="user@email.com" value={topupAdminEmail} onChange={(e) => setTopupAdminEmail(e.target.value)} className="bg-background/50" />
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setTopupAdminDialog(false)}>Cancel</Button>
+              <Button onClick={addTopupAdmin}>Add Topup Admin</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -1364,3 +1423,4 @@ const Admin = () => {
 };
 
 export default Admin;
+
