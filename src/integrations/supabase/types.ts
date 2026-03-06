@@ -208,11 +208,37 @@ export type Database = {
         }
         Relationships: []
       }
+      topup_admins: {
+        Row: {
+          added_by: string | null
+          created_at: string
+          email: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          added_by?: string | null
+          created_at?: string
+          email: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          added_by?: string | null
+          created_at?: string
+          email?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       topup_packages: {
         Row: {
           created_at: string
+          description: string | null
           duration_days: number | null
           id: string
+          image_url: string | null
           is_active: boolean
           label: string
           price: number
@@ -221,8 +247,10 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          description?: string | null
           duration_days?: number | null
           id?: string
+          image_url?: string | null
           is_active?: boolean
           label: string
           price?: number
@@ -231,8 +259,10 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          description?: string | null
           duration_days?: number | null
           id?: string
+          image_url?: string | null
           is_active?: boolean
           label?: string
           price?: number
@@ -248,11 +278,14 @@ export type Database = {
           created_at: string
           duration_label: string
           fake_score: number | null
+          game_name: string | null
           game_uid: string
           id: string
           payment_method: string
           payment_proof_url: string | null
           product_name: string
+          server_id: string | null
+          server_name: string | null
           status: string
           updated_at: string
           user_id: string | null
@@ -263,11 +296,14 @@ export type Database = {
           created_at?: string
           duration_label: string
           fake_score?: number | null
+          game_name?: string | null
           game_uid: string
           id?: string
           payment_method?: string
           payment_proof_url?: string | null
           product_name: string
+          server_id?: string | null
+          server_name?: string | null
           status?: string
           updated_at?: string
           user_id?: string | null
@@ -278,14 +314,55 @@ export type Database = {
           created_at?: string
           duration_label?: string
           fake_score?: number | null
+          game_name?: string | null
           game_uid?: string
           id?: string
           payment_method?: string
           payment_proof_url?: string | null
           product_name?: string
+          server_id?: string | null
+          server_name?: string | null
           status?: string
           updated_at?: string
           user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "topup_requests_server_id_fkey"
+            columns: ["server_id"]
+            isOneToOne: false
+            referencedRelation: "topup_servers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      topup_servers: {
+        Row: {
+          created_at: string
+          flag: string | null
+          id: string
+          is_active: boolean
+          logo_url: string | null
+          name: string
+          sort_order: number | null
+        }
+        Insert: {
+          created_at?: string
+          flag?: string | null
+          id?: string
+          is_active?: boolean
+          logo_url?: string | null
+          name: string
+          sort_order?: number | null
+        }
+        Update: {
+          created_at?: string
+          flag?: string | null
+          id?: string
+          is_active?: boolean
+          logo_url?: string | null
+          name?: string
+          sort_order?: number | null
         }
         Relationships: []
       }
