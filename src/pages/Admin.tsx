@@ -1024,16 +1024,15 @@ const Admin = () => {
                         <Button variant="ghost" size="icon" onClick={() => { setEditPkg(pkg); setPkgForm({ label: pkg.label, price: pkg.price, duration_days: pkg.duration_days || 0, description: pkg.description || "" }); setPkgImageFile(null); setPkgDialog(true); }}>
                           <Edit className="w-4 h-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" onClick={async () => { await supabase.from("topup_packages").delete().eq("id", pkg.id); fetchAll(); }}>
-                          <Trash2 className="w-4 h-4 text-destructive" />
-                        </Button>
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+                         <Button variant="ghost" size="icon" onClick={async () => { await supabase.from("topup_packages").delete().eq("id", pkg.id); fetchAll(); }}>
+                           <Trash2 className="w-4 h-4 text-destructive" />
+                         </Button>
+                       </div>
+                     </div>
+                   ))}
+                 </div>
+               </CardContent>
+             </Card>
 
             {/* Topup Requests */}
             <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
