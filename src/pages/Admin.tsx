@@ -116,8 +116,10 @@ const Admin = () => {
       supabase.from("site_settings").select("*"),
     ]);
     const { data: offerData } = await supabase.from("offers").select("*").order("sort_order");
-    const { data: topupReqs } = await supabase.from("topup_requests").select("*").order("created_at", { ascending: false });
+    const { data: topupReqs } = await supabase.from("topup_requests").select("*, topup_servers(name,flag)").order("created_at", { ascending: false });
     const { data: topupPkgs } = await supabase.from("topup_packages").select("*").order("sort_order");
+    const { data: srvs } = await supabase.from("topup_servers").select("*").order("sort_order");
+    const { data: tadmins } = await supabase.from("topup_admins").select("*").order("created_at", { ascending: false });
 
     setProducts(prods || []);
     setTransactions(txns || []);
@@ -126,11 +128,13 @@ const Admin = () => {
     setOffers(offerData || []);
     setTopupRequests(topupReqs || []);
     setTopupPackages(topupPkgs || []);
+    setTopupServers(srvs || []);
+    setTopupAdmins(tadmins || []);
 
     const links: Record<string, string> = { whatsapp_link: "", tiktok_link: "", discord_link: "" };
     let mMode = false;
     let reqApproval = true;
-    const ts = { payment_method: "qr", processing_time: "5-30 minutes", qr_url: "" };
+    const ts = { payment_method: "qr", processing_time: "5-30 minutes", esewa_qr_url: "", khalti_qr_url: "", bank_qr_url: "" };
     (settings || []).forEach((s: any) => {
       if (s.key === "maintenance_mode") mMode = s.value === "true";
       else if (s.key === "require_approval") reqApproval = s.value !== "false";
@@ -138,7 +142,9 @@ const Admin = () => {
       else if (s.key === "logo_video_url") setLogoVideo(s.value || "");
       else if (s.key === "topup_payment_method") ts.payment_method = s.value || "qr";
       else if (s.key === "topup_processing_time") ts.processing_time = s.value || "5-30 minutes";
-      else if (s.key === "topup_qr_url") ts.qr_url = s.value || "";
+      else if (s.key === "esewa_qr_url") ts.esewa_qr_url = s.value || "";
+      else if (s.key === "khalti_qr_url") ts.khalti_qr_url = s.value || "";
+      else if (s.key === "bank_qr_url") ts.bank_qr_url = s.value || "";
       else links[s.key] = s.value || "";
     });
     setSocialLinks(links);
