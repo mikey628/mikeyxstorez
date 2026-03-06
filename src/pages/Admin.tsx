@@ -15,7 +15,7 @@ import {
   Users, Package, Key, Plus, Trash2, Edit, Search,
   Coins, Download, Ban, Shield, CheckCircle, XCircle, Upload,
   LogOut, Link as LinkIcon, Globe, Clock, Power, AlertTriangle, RotateCcw,
-  Tag, Gift, Image, Video, QrCode, CreditCard, Eye, ExternalLink,
+  Tag, Gift, Image, Video, QrCode, CreditCard, Eye, ExternalLink, Server, UserPlus,
 } from "lucide-react";
 import { Navigate } from "react-router-dom";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
@@ -40,17 +40,32 @@ const Admin = () => {
   // Topup management
   const [topupRequests, setTopupRequests] = useState<any[]>([]);
   const [topupPackages, setTopupPackages] = useState<any[]>([]);
+  const [topupServers, setTopupServers] = useState<any[]>([]);
+  const [topupAdmins, setTopupAdmins] = useState<any[]>([]);
   const [topupSettings, setTopupSettings] = useState({
     payment_method: "qr",
     processing_time: "5-30 minutes",
-    qr_url: "",
+    esewa_qr_url: "",
+    khalti_qr_url: "",
+    bank_qr_url: "",
   });
-  const [topupQrFile, setTopupQrFile] = useState<File | null>(null);
-  const [qrUploading, setQrUploading] = useState(false);
+  const [qrUploading, setQrUploading] = useState<string | null>(null);
   const [pkgDialog, setPkgDialog] = useState(false);
   const [editPkg, setEditPkg] = useState<any>(null);
-  const [pkgForm, setPkgForm] = useState({ label: "", price: 0, duration_days: 0 });
+  const [pkgForm, setPkgForm] = useState({ label: "", price: 0, duration_days: 0, description: "" });
+  const [pkgImageFile, setPkgImageFile] = useState<File | null>(null);
   const [proofViewUrl, setProofViewUrl] = useState<string | null>(null);
+
+  // Server management
+  const [serverDialog, setServerDialog] = useState(false);
+  const [editServer, setEditServer] = useState<any>(null);
+  const [serverForm, setServerForm] = useState({ name: "", flag: "🌐" });
+  const [serverLogoFile, setServerLogoFile] = useState<File | null>(null);
+  const [serverUploading, setServerUploading] = useState(false);
+
+  // Topup admin management
+  const [topupAdminDialog, setTopupAdminDialog] = useState(false);
+  const [topupAdminEmail, setTopupAdminEmail] = useState("");
 
   // Product dialog
   const [productDialog, setProductDialog] = useState(false);
