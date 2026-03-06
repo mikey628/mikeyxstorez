@@ -352,30 +352,100 @@ const Admin = () => {
     toast.success("Topup settings saved!");
   };
 
-  const uploadTopupQr = async (file: File) => {
-    setQrUploading(true);
-    const path = `topup_qr_${Date.now()}.${file.name.split(".").pop()}`;
+  const uploadTopupQr = async (file: File, type: "esewa" | "khalti" | "bank") => {
+    setQrUploading(type);
+    const path = `${type}_qr_${Date.now()}.${file.name.split(".").pop()}`;
     const { error } = await supabase.storage.from("topup-qr").upload(path, file, { upsert: true });
-    if (error) { toast.error("Upload failed"); setQrUploading(false); return; }
+    if (error) { toast.error("Upload failed"); setQrUploading(null); return; }
     const { data: { publicUrl } } = supabase.storage.from("topup-qr").getPublicUrl(path);
-    await supabase.from("site_settings").update({ value: publicUrl }).eq("key", "topup_qr_url");
-    setTopupSettings(s => ({ ...s, qr_url: publicUrl }));
-    toast.success("QR code updated!");
-    setQrUploading(false);
+    const settingKey = `${type}_qr_url`;
+    const { count } = await supabase.from("site_settings").select("*", { count: "exact", head: true }).eq("key", settingKey);
+    if (count && count > 0) {
+      await supabase.from("site_settings").update({ value: publicUrl }).eq("key", settingKey);
+    } else {
+      await supabase.from("site_settings").insert({ key: settingKey, value: publicUrl });
+    }
+    setTopupSettings(s => ({ ...s, [`${type}_qr_url`]: publicUrl }));
+    toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} QR updated!`);
+    setQrUploading(null);
   };
 
   const saveTopupPackage = async () => {
     if (!pkgForm.label || !pkgForm.price) { toast.error("Fill all fields"); return; }
+    let imageUrl: string | undefined = editPkg?.image_url;
+    if (pkgImageFile) {
+      const path = `pkg_${Date.now()}_${pkgImageFile.name}`;
+      const { error: upErr } = await supabase.storage.from("topup-qr").upload(path, pkgImageFile, { upsert: true });
+      if (!upErr) {
+        const { data: { publicUrl } } = supabase.storage.from("topup-qr").getPublicUrl(path);
+        imageUrl = publicUrl;
+      }
+    }
+    const payload = { ...pkgForm, image_url: imageUrl };
     if (editPkg) {
-      await supabase.from("topup_packages").update(pkgForm).eq("id", editPkg.id);
+      await supabase.from("topup_packages").update(payload).eq("id", editPkg.id);
       toast.success("Package updated");
     } else {
-      await supabase.from("topup_packages").insert(pkgForm);
+      await supabase.from("topup_packages").insert(payload);
       toast.success("Package added");
     }
     setPkgDialog(false);
     setEditPkg(null);
-    setPkgForm({ label: "", price: 0, duration_days: 0 });
+    setPkgForm({ label: "", price: 0, duration_days: 0, description: "" });
+    setPkgImageFile(null);
+    fetchAll();
+  };
+
+  const saveServer = async () => {
+    if (!serverForm.name) { toast.error("Enter server name"); return; }
+    setServerUploading(true);
+    let logoUrl: string | undefined = editServer?.logo_url;
+    if (serverLogoFile) {
+      const path = `server_logo_${Date.now()}.${serverLogoFile.name.split(".").pop()}`;
+      const { error: upErr } = await supabase.storage.from("logo-media").upload(path, serverLogoFile, { upsert: true });
+      if (!upErr) {
+        const { data: { publicUrl } } = supabase.storage.from("logo-media").getPublicUrl(path);
+        logoUrl = publicUrl;
+      }
+    }
+    const payload = { name: serverForm.name, flag: serverForm.flag, logo_url: logoUrl };
+    if (editServer) {
+      await supabase.from("topup_servers").update(payload).eq("id", editServer.id);
+      toast.success("Server updated");
+    } else {
+      await supabase.from("topup_servers").insert(payload);
+      toast.success("Server added");
+    }
+    setServerDialog(false);
+    setEditServer(null);
+    setServerForm({ name: "", flag: "🌐" });
+    setServerLogoFile(null);
+    setServerUploading(false);
+    fetchAll();
+  };
+
+  const deleteServer = async (id: string) => {
+    await supabase.from("topup_servers").delete().eq("id", id);
+    toast.success("Server removed");
+    fetchAll();
+  };
+
+  const addTopupAdmin = async () => {
+    if (!topupAdminEmail.trim()) { toast.error("Enter email"); return; }
+    // Find user by email
+    const targetUser = users.find(u => u.email.toLowerCase() === topupAdminEmail.toLowerCase());
+    if (!targetUser) { toast.error("User not found. Make sure they have an account."); return; }
+    const { error } = await supabase.from("topup_admins").insert({ user_id: targetUser.user_id, email: targetUser.email });
+    if (error) { toast.error(error.message); return; }
+    toast.success(`${targetUser.email} added as Topup Admin!`);
+    setTopupAdminDialog(false);
+    setTopupAdminEmail("");
+    fetchAll();
+  };
+
+  const removeTopupAdmin = async (id: string) => {
+    await supabase.from("topup_admins").delete().eq("id", id);
+    toast.success("Topup admin removed");
     fetchAll();
   };
 
