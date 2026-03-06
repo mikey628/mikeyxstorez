@@ -31,7 +31,7 @@ const translations: Record<Language, Record<string, string>> = {
     profileUpdated: "Profile updated!", yourPhoto: "Your Photo", clickToChangePhoto: "Click to change photo",
     accountDetails: "Account Details", displayName: "Display Name", phoneNumber: "Phone Number",
     saveChanges: "Save Changes", yourPurchasedKeys: "Your purchased access keys.", noKeysPurchased: "No keys purchased yet.",
-    purchased: "Purchased",
+    purchased: "Purchased", topUp: "Top Up",
   },
   ne: {
     dashboard: "ड्यासबोर्ड", products: "उत्पादनहरू", myKeys: "मेरा कुञ्जीहरू", transactions: "लेनदेनहरू",

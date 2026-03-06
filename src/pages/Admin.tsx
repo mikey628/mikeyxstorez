@@ -15,7 +15,7 @@ import {
   Users, Package, Key, Plus, Trash2, Edit, Search,
   Coins, Download, Ban, Shield, CheckCircle, XCircle, Upload,
   LogOut, Link as LinkIcon, Globe, Clock, Power, AlertTriangle, RotateCcw,
-  Tag, Gift, Image, Video, QrCode, CreditCard, Eye, ExternalLink,
+  Tag, Gift, Image, Video, QrCode, CreditCard, Eye, ExternalLink, Server, UserPlus,
 } from "lucide-react";
 import { Navigate } from "react-router-dom";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
@@ -40,17 +40,32 @@ const Admin = () => {
   // Topup management
   const [topupRequests, setTopupRequests] = useState<any[]>([]);
   const [topupPackages, setTopupPackages] = useState<any[]>([]);
+  const [topupServers, setTopupServers] = useState<any[]>([]);
+  const [topupAdmins, setTopupAdmins] = useState<any[]>([]);
   const [topupSettings, setTopupSettings] = useState({
     payment_method: "qr",
     processing_time: "5-30 minutes",
-    qr_url: "",
+    esewa_qr_url: "",
+    khalti_qr_url: "",
+    bank_qr_url: "",
   });
-  const [topupQrFile, setTopupQrFile] = useState<File | null>(null);
-  const [qrUploading, setQrUploading] = useState(false);
+  const [qrUploading, setQrUploading] = useState<string | null>(null);
   const [pkgDialog, setPkgDialog] = useState(false);
   const [editPkg, setEditPkg] = useState<any>(null);
-  const [pkgForm, setPkgForm] = useState({ label: "", price: 0, duration_days: 0 });
+  const [pkgForm, setPkgForm] = useState({ label: "", price: 0, duration_days: 0, description: "" });
+  const [pkgImageFile, setPkgImageFile] = useState<File | null>(null);
   const [proofViewUrl, setProofViewUrl] = useState<string | null>(null);
+
+  // Server management
+  const [serverDialog, setServerDialog] = useState(false);
+  const [editServer, setEditServer] = useState<any>(null);
+  const [serverForm, setServerForm] = useState({ name: "", flag: "🌐" });
+  const [serverLogoFile, setServerLogoFile] = useState<File | null>(null);
+  const [serverUploading, setServerUploading] = useState(false);
+
+  // Topup admin management
+  const [topupAdminDialog, setTopupAdminDialog] = useState(false);
+  const [topupAdminEmail, setTopupAdminEmail] = useState("");
 
   // Product dialog
   const [productDialog, setProductDialog] = useState(false);
@@ -101,8 +116,10 @@ const Admin = () => {
       supabase.from("site_settings").select("*"),
     ]);
     const { data: offerData } = await supabase.from("offers").select("*").order("sort_order");
-    const { data: topupReqs } = await supabase.from("topup_requests").select("*").order("created_at", { ascending: false });
+    const { data: topupReqs } = await supabase.from("topup_requests").select("*, topup_servers(name,flag)").order("created_at", { ascending: false });
     const { data: topupPkgs } = await supabase.from("topup_packages").select("*").order("sort_order");
+    const { data: srvs } = await supabase.from("topup_servers").select("*").order("sort_order");
+    const { data: tadmins } = await supabase.from("topup_admins").select("*").order("created_at", { ascending: false });
 
     setProducts(prods || []);
     setTransactions(txns || []);
@@ -111,11 +128,13 @@ const Admin = () => {
     setOffers(offerData || []);
     setTopupRequests(topupReqs || []);
     setTopupPackages(topupPkgs || []);
+    setTopupServers(srvs || []);
+    setTopupAdmins(tadmins || []);
 
     const links: Record<string, string> = { whatsapp_link: "", tiktok_link: "", discord_link: "" };
     let mMode = false;
     let reqApproval = true;
-    const ts = { payment_method: "qr", processing_time: "5-30 minutes", qr_url: "" };
+    const ts = { payment_method: "qr", processing_time: "5-30 minutes", esewa_qr_url: "", khalti_qr_url: "", bank_qr_url: "" };
     (settings || []).forEach((s: any) => {
       if (s.key === "maintenance_mode") mMode = s.value === "true";
       else if (s.key === "require_approval") reqApproval = s.value !== "false";
@@ -123,7 +142,9 @@ const Admin = () => {
       else if (s.key === "logo_video_url") setLogoVideo(s.value || "");
       else if (s.key === "topup_payment_method") ts.payment_method = s.value || "qr";
       else if (s.key === "topup_processing_time") ts.processing_time = s.value || "5-30 minutes";
-      else if (s.key === "topup_qr_url") ts.qr_url = s.value || "";
+      else if (s.key === "esewa_qr_url") ts.esewa_qr_url = s.value || "";
+      else if (s.key === "khalti_qr_url") ts.khalti_qr_url = s.value || "";
+      else if (s.key === "bank_qr_url") ts.bank_qr_url = s.value || "";
       else links[s.key] = s.value || "";
     });
     setSocialLinks(links);
@@ -331,30 +352,100 @@ const Admin = () => {
     toast.success("Topup settings saved!");
   };
 
-  const uploadTopupQr = async (file: File) => {
-    setQrUploading(true);
-    const path = `topup_qr_${Date.now()}.${file.name.split(".").pop()}`;
+  const uploadTopupQr = async (file: File, type: "esewa" | "khalti" | "bank") => {
+    setQrUploading(type);
+    const path = `${type}_qr_${Date.now()}.${file.name.split(".").pop()}`;
     const { error } = await supabase.storage.from("topup-qr").upload(path, file, { upsert: true });
-    if (error) { toast.error("Upload failed"); setQrUploading(false); return; }
+    if (error) { toast.error("Upload failed"); setQrUploading(null); return; }
     const { data: { publicUrl } } = supabase.storage.from("topup-qr").getPublicUrl(path);
-    await supabase.from("site_settings").update({ value: publicUrl }).eq("key", "topup_qr_url");
-    setTopupSettings(s => ({ ...s, qr_url: publicUrl }));
-    toast.success("QR code updated!");
-    setQrUploading(false);
+    const settingKey = `${type}_qr_url`;
+    const { count } = await supabase.from("site_settings").select("*", { count: "exact", head: true }).eq("key", settingKey);
+    if (count && count > 0) {
+      await supabase.from("site_settings").update({ value: publicUrl }).eq("key", settingKey);
+    } else {
+      await supabase.from("site_settings").insert({ key: settingKey, value: publicUrl });
+    }
+    setTopupSettings(s => ({ ...s, [`${type}_qr_url`]: publicUrl }));
+    toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} QR updated!`);
+    setQrUploading(null);
   };
 
   const saveTopupPackage = async () => {
     if (!pkgForm.label || !pkgForm.price) { toast.error("Fill all fields"); return; }
+    let imageUrl: string | undefined = editPkg?.image_url;
+    if (pkgImageFile) {
+      const path = `pkg_${Date.now()}_${pkgImageFile.name}`;
+      const { error: upErr } = await supabase.storage.from("topup-qr").upload(path, pkgImageFile, { upsert: true });
+      if (!upErr) {
+        const { data: { publicUrl } } = supabase.storage.from("topup-qr").getPublicUrl(path);
+        imageUrl = publicUrl;
+      }
+    }
+    const payload = { ...pkgForm, image_url: imageUrl };
     if (editPkg) {
-      await supabase.from("topup_packages").update(pkgForm).eq("id", editPkg.id);
+      await supabase.from("topup_packages").update(payload).eq("id", editPkg.id);
       toast.success("Package updated");
     } else {
-      await supabase.from("topup_packages").insert(pkgForm);
+      await supabase.from("topup_packages").insert(payload);
       toast.success("Package added");
     }
     setPkgDialog(false);
     setEditPkg(null);
-    setPkgForm({ label: "", price: 0, duration_days: 0 });
+    setPkgForm({ label: "", price: 0, duration_days: 0, description: "" });
+    setPkgImageFile(null);
+    fetchAll();
+  };
+
+  const saveServer = async () => {
+    if (!serverForm.name) { toast.error("Enter server name"); return; }
+    setServerUploading(true);
+    let logoUrl: string | undefined = editServer?.logo_url;
+    if (serverLogoFile) {
+      const path = `server_logo_${Date.now()}.${serverLogoFile.name.split(".").pop()}`;
+      const { error: upErr } = await supabase.storage.from("logo-media").upload(path, serverLogoFile, { upsert: true });
+      if (!upErr) {
+        const { data: { publicUrl } } = supabase.storage.from("logo-media").getPublicUrl(path);
+        logoUrl = publicUrl;
+      }
+    }
+    const payload = { name: serverForm.name, flag: serverForm.flag, logo_url: logoUrl };
+    if (editServer) {
+      await supabase.from("topup_servers").update(payload).eq("id", editServer.id);
+      toast.success("Server updated");
+    } else {
+      await supabase.from("topup_servers").insert(payload);
+      toast.success("Server added");
+    }
+    setServerDialog(false);
+    setEditServer(null);
+    setServerForm({ name: "", flag: "🌐" });
+    setServerLogoFile(null);
+    setServerUploading(false);
+    fetchAll();
+  };
+
+  const deleteServer = async (id: string) => {
+    await supabase.from("topup_servers").delete().eq("id", id);
+    toast.success("Server removed");
+    fetchAll();
+  };
+
+  const addTopupAdmin = async () => {
+    if (!topupAdminEmail.trim()) { toast.error("Enter email"); return; }
+    // Find user by email
+    const targetUser = users.find(u => u.email.toLowerCase() === topupAdminEmail.toLowerCase());
+    if (!targetUser) { toast.error("User not found. Make sure they have an account."); return; }
+    const { error } = await supabase.from("topup_admins").insert({ user_id: targetUser.user_id, email: targetUser.email });
+    if (error) { toast.error(error.message); return; }
+    toast.success(`${targetUser.email} added as Topup Admin!`);
+    setTopupAdminDialog(false);
+    setTopupAdminEmail("");
+    fetchAll();
+  };
+
+  const removeTopupAdmin = async (id: string) => {
+    await supabase.from("topup_admins").delete().eq("id", id);
+    toast.success("Topup admin removed");
     fetchAll();
   };
 
@@ -833,30 +924,76 @@ const Admin = () => {
                   </div>
                 </div>
 
-                {/* QR Upload */}
+                {/* QR Upload — 3 options */}
                 {topupSettings.payment_method === "qr" && (
-                  <div className="space-y-2">
-                    <label className="text-sm text-muted-foreground">Payment QR Code Image</label>
-                    {topupSettings.qr_url && (
-                      <img src={topupSettings.qr_url} alt="Payment QR" className="w-32 h-32 object-contain rounded-lg border border-border/50" />
-                    )}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={qrUploading}
-                      onClick={() => document.getElementById("topup-qr-input")?.click()}
-                    >
-                      <Upload className="w-4 h-4 mr-1" /> {qrUploading ? "Uploading..." : "Upload QR Image"}
-                    </Button>
-                    <input
-                      id="topup-qr-input"
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadTopupQr(f); }}
-                    />
+                  <div className="space-y-3">
+                    <label className="text-sm text-muted-foreground font-medium">Payment QR Codes (eSewa, Khalti, Bank)</label>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      {(["esewa", "khalti", "bank"] as const).map((type) => {
+                        const labels = { esewa: "eSewa", khalti: "Khalti", bank: "Bank Transfer" };
+                        const colors = { esewa: "text-green-500", khalti: "text-purple-500", bank: "text-blue-500" };
+                        const qrUrl = topupSettings[`${type}_qr_url` as keyof typeof topupSettings] as string;
+                        return (
+                          <div key={type} className="space-y-2 text-center">
+                            <p className={`text-xs font-medium ${colors[type]}`}>{labels[type]}</p>
+                            {qrUrl && (
+                              <img src={qrUrl} alt={`${type} QR`} className="w-24 h-24 object-contain mx-auto rounded-lg border border-border/50 bg-white p-1" />
+                            )}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="w-full text-xs"
+                              disabled={qrUploading === type}
+                              onClick={() => document.getElementById(`qr-input-${type}`)?.click()}
+                            >
+                              <Upload className="w-3 h-3 mr-1" />
+                              {qrUploading === type ? "Uploading..." : (qrUrl ? "Replace" : "Upload")}
+                            </Button>
+                            <input id={`qr-input-${type}`} type="file" accept="image/*" className="hidden"
+                              onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadTopupQr(f, type); }} />
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
+              </CardContent>
+            </Card>
+
+            {/* Servers Management */}
+            <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
+              <CardContent className="p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-semibold flex items-center gap-2"><Server className="w-4 h-4 text-primary" /> Game Servers</h3>
+                  <Button size="sm" onClick={() => { setEditServer(null); setServerForm({ name: "", flag: "🌐" }); setServerLogoFile(null); setServerDialog(true); }}>
+                    <Plus className="w-4 h-4 mr-1" /> Add Server
+                  </Button>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {topupServers.map((srv) => (
+                    <div key={srv.id} className="p-3 rounded-lg bg-background/50 border border-border/30 text-center relative group">
+                      {srv.logo_url ? (
+                        <img src={srv.logo_url} alt={srv.name} className="w-8 h-8 object-contain mx-auto mb-1 rounded" />
+                      ) : (
+                        <span className="text-2xl block mb-1">{srv.flag || "🌐"}</span>
+                      )}
+                      <p className="text-xs font-medium truncate">{srv.name}</p>
+                      <div className="absolute top-1 right-1 gap-0.5 hidden group-hover:flex">
+                        <button onClick={() => { setEditServer(srv); setServerForm({ name: srv.name, flag: srv.flag || "🌐" }); setServerLogoFile(null); setServerDialog(true); }}
+                          className="p-0.5 rounded bg-card/80 text-muted-foreground hover:text-foreground">
+                          <Edit className="w-3 h-3" />
+                        </button>
+                        <button onClick={() => deleteServer(srv.id)}
+                          className="p-0.5 rounded bg-card/80 text-muted-foreground hover:text-destructive">
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  {topupServers.length === 0 && (
+                    <p className="col-span-3 text-center text-muted-foreground text-xs py-3">No servers added yet.</p>
+                  )}
+                </div>
               </CardContent>
             </Card>
 
@@ -865,74 +1002,121 @@ const Admin = () => {
               <CardContent className="p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <h3 className="font-semibold flex items-center gap-2"><Package className="w-4 h-4 text-primary" /> Packages</h3>
-                  <Button size="sm" onClick={() => { setEditPkg(null); setPkgForm({ label: "", price: 0, duration_days: 0 }); setPkgDialog(true); }}>
+                  <Button size="sm" onClick={() => { setEditPkg(null); setPkgForm({ label: "", price: 0, duration_days: 0, description: "" }); setPkgImageFile(null); setPkgDialog(true); }}>
                     <Plus className="w-4 h-4 mr-1" /> Add
                   </Button>
                 </div>
-                <div className="space-y-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {topupPackages.map((pkg) => (
-                    <div key={pkg.id} className="flex items-center justify-between p-3 rounded-lg bg-background/50 border border-border/30">
-                      <div>
-                        <p className="font-medium text-sm">{pkg.label}</p>
-                        <p className="text-xs text-muted-foreground">{pkg.price} pts · {pkg.duration_days}d</p>
+                    <div key={pkg.id} className="flex items-center gap-3 p-3 rounded-lg bg-background/50 border border-border/30">
+                      {pkg.image_url ? (
+                        <img src={pkg.image_url} alt={pkg.label} className="w-10 h-10 object-cover rounded-lg shrink-0" />
+                      ) : (
+                        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                          <Package className="w-4 h-4 text-primary/50" />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm truncate">{pkg.label}</p>
+                        <p className="text-xs text-muted-foreground">${pkg.price} · {pkg.duration_days}d</p>
                       </div>
-                      <div className="flex gap-1">
-                        <Button variant="ghost" size="icon" onClick={() => { setEditPkg(pkg); setPkgForm({ label: pkg.label, price: pkg.price, duration_days: pkg.duration_days || 0 }); setPkgDialog(true); }}>
+                      <div className="flex gap-1 shrink-0">
+                        <Button variant="ghost" size="icon" onClick={() => { setEditPkg(pkg); setPkgForm({ label: pkg.label, price: pkg.price, duration_days: pkg.duration_days || 0, description: pkg.description || "" }); setPkgImageFile(null); setPkgDialog(true); }}>
                           <Edit className="w-4 h-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" onClick={async () => { await supabase.from("topup_packages").delete().eq("id", pkg.id); fetchAll(); }}>
-                          <Trash2 className="w-4 h-4 text-destructive" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+                         <Button variant="ghost" size="icon" onClick={async () => { await supabase.from("topup_packages").delete().eq("id", pkg.id); fetchAll(); }}>
+                           <Trash2 className="w-4 h-4 text-destructive" />
+                         </Button>
+                       </div>
+                     </div>
+                   ))}
+                 </div>
+               </CardContent>
+             </Card>
 
             {/* Topup Requests */}
             <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
               <CardContent className="p-4 space-y-3">
                 <h3 className="font-semibold flex items-center gap-2"><Coins className="w-4 h-4 text-primary" /> Payment Requests ({topupRequests.filter(r => r.status === "pending").length} pending)</h3>
                 <div className="space-y-2">
-                  {topupRequests.map((req) => (
-                    <div key={req.id} className={`p-3 rounded-lg border ${req.status === "pending" ? "border-warning/40 bg-warning/5" : req.status === "approved" ? "border-success/40 bg-success/5" : "border-destructive/40 bg-destructive/5"}`}>
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <Badge variant={req.status === "pending" ? "outline" : req.status === "approved" ? "default" : "destructive"} className="text-xs">
-                              {req.status}
-                            </Badge>
-                            {req.fake_score >= 50 && (
-                              <Badge variant="destructive" className="text-xs">⚠️ Suspicious</Badge>
-                            )}
-                            <span className="text-xs text-muted-foreground">{new Date(req.created_at).toLocaleDateString()}</span>
+                  {topupRequests.map((req) => {
+                    const userInfo = users.find(u => u.user_id === req.user_id);
+                    return (
+                      <div key={req.id} className={`p-3 rounded-lg border ${req.status === "pending" ? "border-warning/40 bg-warning/5" : req.status === "approved" ? "border-success/40 bg-success/5" : "border-destructive/40 bg-destructive/5"}`}>
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <Badge variant={req.status === "pending" ? "outline" : req.status === "approved" ? "default" : "destructive"} className="text-xs">
+                                {req.status}
+                              </Badge>
+                              {req.fake_score >= 50 && (
+                                <Badge variant="destructive" className="text-xs">⚠️ Suspicious</Badge>
+                              )}
+                              <span className="text-xs text-muted-foreground">{new Date(req.created_at).toLocaleDateString()}</span>
+                            </div>
+                            <p className="font-medium text-sm mt-1">
+                              UID: <span className="font-mono">{req.game_uid}</span>
+                              {req.game_name && req.game_name !== `User@${req.game_uid}` && (
+                                <span className="text-primary ml-1">· {req.game_name}</span>
+                              )}
+                            </p>
+                            <p className="text-xs text-muted-foreground">{req.duration_label} · ${req.amount_paid}</p>
+                            {req.server_name && <p className="text-xs text-muted-foreground">Server: {req.server_name}</p>}
+                            {userInfo && <p className="text-xs text-muted-foreground">User: {userInfo.email}</p>}
+                            {req.payment_method && <p className="text-xs text-muted-foreground">Payment: {req.payment_method.replace("qr_", "").toUpperCase()}</p>}
                           </div>
-                          <p className="font-medium text-sm mt-1">UID: <span className="font-mono">{req.game_uid}</span></p>
-                          <p className="text-xs text-muted-foreground">{req.duration_label} · {req.amount_paid} pts</p>
-                        </div>
-                        <div className="flex gap-1 shrink-0 flex-col sm:flex-row">
-                          {req.payment_proof_url && (
-                            <Button variant="ghost" size="icon" title="View proof" onClick={() => setProofViewUrl(req.payment_proof_url)}>
-                              <Eye className="w-4 h-4" />
-                            </Button>
-                          )}
-                          {req.status === "pending" && (
-                            <>
-                              <Button variant="ghost" size="icon" title="Approve" onClick={() => updateTopupStatus(req.id, "approved")}>
-                                <CheckCircle className="w-4 h-4 text-success" />
+                          <div className="flex gap-1 shrink-0 flex-col">
+                            {req.payment_proof_url && (
+                              <Button variant="ghost" size="icon" title="View proof" onClick={() => setProofViewUrl(req.payment_proof_url)}>
+                                <Eye className="w-4 h-4" />
                               </Button>
-                              <Button variant="ghost" size="icon" title="Reject" onClick={() => updateTopupStatus(req.id, "rejected")}>
-                                <XCircle className="w-4 h-4 text-destructive" />
-                              </Button>
-                            </>
-                          )}
+                            )}
+                            {req.status === "pending" && (
+                              <>
+                                <Button variant="ghost" size="icon" title="Approve" onClick={() => updateTopupStatus(req.id, "approved")}>
+                                  <CheckCircle className="w-4 h-4 text-success" />
+                                </Button>
+                                <Button variant="ghost" size="icon" title="Reject" onClick={() => updateTopupStatus(req.id, "rejected")}>
+                                  <XCircle className="w-4 h-4 text-destructive" />
+                                </Button>
+                              </>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                   {topupRequests.length === 0 && (
                     <p className="text-center text-muted-foreground text-sm py-6">No topup requests yet.</p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Topup Admins */}
+            <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
+              <CardContent className="p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-semibold flex items-center gap-2"><UserPlus className="w-4 h-4 text-primary" /> Topup Admins</h3>
+                  <Button size="sm" onClick={() => { setTopupAdminEmail(""); setTopupAdminDialog(true); }}>
+                    <Plus className="w-4 h-4 mr-1" /> Add
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">Topup admins can view/approve payment requests but cannot change products, prices, or QR codes.</p>
+                <div className="space-y-2">
+                  {topupAdmins.map((ta) => (
+                    <div key={ta.id} className="flex items-center justify-between p-3 rounded-lg bg-background/50 border border-border/30">
+                      <div>
+                        <p className="text-sm font-medium">{ta.email}</p>
+                        <p className="text-xs text-muted-foreground">Added {new Date(ta.created_at).toLocaleDateString()}</p>
+                      </div>
+                      <Button variant="ghost" size="icon" onClick={() => removeTopupAdmin(ta.id)}>
+                        <Trash2 className="w-4 h-4 text-destructive" />
+                      </Button>
+                    </div>
+                  ))}
+                  {topupAdmins.length === 0 && (
+                    <p className="text-center text-muted-foreground text-xs py-2">No topup admins yet.</p>
                   )}
                 </div>
               </CardContent>
@@ -1148,12 +1332,71 @@ const Admin = () => {
             </DialogHeader>
             <div className="space-y-3">
               <Input placeholder="Label (e.g. Weekly Lite)" value={pkgForm.label} onChange={(e) => setPkgForm({ ...pkgForm, label: e.target.value })} className="bg-background/50" />
-              <Input type="number" placeholder="Price (points)" value={pkgForm.price} onChange={(e) => setPkgForm({ ...pkgForm, price: Number(e.target.value) })} className="bg-background/50" />
+              <Input placeholder="Description (optional)" value={pkgForm.description} onChange={(e) => setPkgForm({ ...pkgForm, description: e.target.value })} className="bg-background/50" />
+              <Input type="number" placeholder="Price ($)" value={pkgForm.price} onChange={(e) => setPkgForm({ ...pkgForm, price: Number(e.target.value) })} className="bg-background/50" />
               <Input type="number" placeholder="Duration (days)" value={pkgForm.duration_days} onChange={(e) => setPkgForm({ ...pkgForm, duration_days: Number(e.target.value) })} className="bg-background/50" />
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Product Image (optional)</label>
+                <div className="flex items-center gap-2">
+                  {(pkgImageFile ? URL.createObjectURL(pkgImageFile) : editPkg?.image_url) && (
+                    <img src={pkgImageFile ? URL.createObjectURL(pkgImageFile) : editPkg?.image_url} alt="pkg" className="w-12 h-12 object-cover rounded-lg" />
+                  )}
+                  <Button variant="outline" size="sm" onClick={() => document.getElementById("pkg-img-input")?.click()}>
+                    <Image className="w-3 h-3 mr-1" /> {pkgImageFile ? pkgImageFile.name.substring(0, 15) + "..." : "Upload Image"}
+                  </Button>
+                  <input id="pkg-img-input" type="file" accept="image/*" className="hidden" onChange={(e) => setPkgImageFile(e.target.files?.[0] || null)} />
+                </div>
+              </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setPkgDialog(false)}>Cancel</Button>
               <Button onClick={saveTopupPackage}>Save</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Server Dialog */}
+        <Dialog open={serverDialog} onOpenChange={setServerDialog}>
+          <DialogContent className="bg-card/95 backdrop-blur-xl">
+            <DialogHeader>
+              <DialogTitle>{editServer ? "Edit Server" : "Add Server"}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              <Input placeholder="Server Name (e.g. BD Server)" value={serverForm.name} onChange={(e) => setServerForm({ ...serverForm, name: e.target.value })} className="bg-background/50" />
+              <Input placeholder="Flag emoji (e.g. 🇧🇩)" value={serverForm.flag} onChange={(e) => setServerForm({ ...serverForm, flag: e.target.value })} className="bg-background/50 text-lg" />
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Server Logo (optional, replaces emoji)</label>
+                <div className="flex items-center gap-2">
+                  {(serverLogoFile ? URL.createObjectURL(serverLogoFile) : editServer?.logo_url) && (
+                    <img src={serverLogoFile ? URL.createObjectURL(serverLogoFile) : editServer?.logo_url} alt="logo" className="w-10 h-10 object-contain rounded-lg" />
+                  )}
+                  <Button variant="outline" size="sm" onClick={() => document.getElementById("server-logo-input")?.click()}>
+                    <Upload className="w-3 h-3 mr-1" /> Upload Logo
+                  </Button>
+                  <input id="server-logo-input" type="file" accept="image/*" className="hidden" onChange={(e) => setServerLogoFile(e.target.files?.[0] || null)} />
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setServerDialog(false)}>Cancel</Button>
+              <Button onClick={saveServer} disabled={serverUploading}>{serverUploading ? "Saving..." : "Save"}</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Topup Admin Dialog */}
+        <Dialog open={topupAdminDialog} onOpenChange={setTopupAdminDialog}>
+          <DialogContent className="bg-card/95 backdrop-blur-xl">
+            <DialogHeader>
+              <DialogTitle>Add Topup Admin</DialogTitle>
+              <DialogDescription>
+                Enter the email of a registered user to give them topup admin access. They can view and approve/reject payment requests only.
+              </DialogDescription>
+            </DialogHeader>
+            <Input placeholder="user@email.com" value={topupAdminEmail} onChange={(e) => setTopupAdminEmail(e.target.value)} className="bg-background/50" />
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setTopupAdminDialog(false)}>Cancel</Button>
+              <Button onClick={addTopupAdmin}>Add Topup Admin</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -1180,3 +1423,4 @@ const Admin = () => {
 };
 
 export default Admin;
+

@@ -22,6 +22,7 @@ const navKeys = [
   { key: "products", icon: Package, path: "/products" },
   { key: "myKeys", icon: ShoppingCart, path: "/my-keys" },
   { key: "transactions", icon: History, path: "/transactions" },
+  { key: "topUp", icon: Wallet, path: "/topup" },
   { key: "profile", icon: User, path: "/profile" },
 ];
 
