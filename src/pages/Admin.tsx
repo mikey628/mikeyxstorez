@@ -1039,44 +1039,84 @@ const Admin = () => {
               <CardContent className="p-4 space-y-3">
                 <h3 className="font-semibold flex items-center gap-2"><Coins className="w-4 h-4 text-primary" /> Payment Requests ({topupRequests.filter(r => r.status === "pending").length} pending)</h3>
                 <div className="space-y-2">
-                  {topupRequests.map((req) => (
-                    <div key={req.id} className={`p-3 rounded-lg border ${req.status === "pending" ? "border-warning/40 bg-warning/5" : req.status === "approved" ? "border-success/40 bg-success/5" : "border-destructive/40 bg-destructive/5"}`}>
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <Badge variant={req.status === "pending" ? "outline" : req.status === "approved" ? "default" : "destructive"} className="text-xs">
-                              {req.status}
-                            </Badge>
-                            {req.fake_score >= 50 && (
-                              <Badge variant="destructive" className="text-xs">⚠️ Suspicious</Badge>
-                            )}
-                            <span className="text-xs text-muted-foreground">{new Date(req.created_at).toLocaleDateString()}</span>
+                  {topupRequests.map((req) => {
+                    const userInfo = users.find(u => u.user_id === req.user_id);
+                    return (
+                      <div key={req.id} className={`p-3 rounded-lg border ${req.status === "pending" ? "border-warning/40 bg-warning/5" : req.status === "approved" ? "border-success/40 bg-success/5" : "border-destructive/40 bg-destructive/5"}`}>
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <Badge variant={req.status === "pending" ? "outline" : req.status === "approved" ? "default" : "destructive"} className="text-xs">
+                                {req.status}
+                              </Badge>
+                              {req.fake_score >= 50 && (
+                                <Badge variant="destructive" className="text-xs">⚠️ Suspicious</Badge>
+                              )}
+                              <span className="text-xs text-muted-foreground">{new Date(req.created_at).toLocaleDateString()}</span>
+                            </div>
+                            <p className="font-medium text-sm mt-1">
+                              UID: <span className="font-mono">{req.game_uid}</span>
+                              {req.game_name && req.game_name !== `User@${req.game_uid}` && (
+                                <span className="text-primary ml-1">· {req.game_name}</span>
+                              )}
+                            </p>
+                            <p className="text-xs text-muted-foreground">{req.duration_label} · ${req.amount_paid}</p>
+                            {req.server_name && <p className="text-xs text-muted-foreground">Server: {req.server_name}</p>}
+                            {userInfo && <p className="text-xs text-muted-foreground">User: {userInfo.email}</p>}
+                            {req.payment_method && <p className="text-xs text-muted-foreground">Payment: {req.payment_method.replace("qr_", "").toUpperCase()}</p>}
                           </div>
-                          <p className="font-medium text-sm mt-1">UID: <span className="font-mono">{req.game_uid}</span></p>
-                          <p className="text-xs text-muted-foreground">{req.duration_label} · {req.amount_paid} pts</p>
-                        </div>
-                        <div className="flex gap-1 shrink-0 flex-col sm:flex-row">
-                          {req.payment_proof_url && (
-                            <Button variant="ghost" size="icon" title="View proof" onClick={() => setProofViewUrl(req.payment_proof_url)}>
-                              <Eye className="w-4 h-4" />
-                            </Button>
-                          )}
-                          {req.status === "pending" && (
-                            <>
-                              <Button variant="ghost" size="icon" title="Approve" onClick={() => updateTopupStatus(req.id, "approved")}>
-                                <CheckCircle className="w-4 h-4 text-success" />
+                          <div className="flex gap-1 shrink-0 flex-col">
+                            {req.payment_proof_url && (
+                              <Button variant="ghost" size="icon" title="View proof" onClick={() => setProofViewUrl(req.payment_proof_url)}>
+                                <Eye className="w-4 h-4" />
                               </Button>
-                              <Button variant="ghost" size="icon" title="Reject" onClick={() => updateTopupStatus(req.id, "rejected")}>
-                                <XCircle className="w-4 h-4 text-destructive" />
-                              </Button>
-                            </>
-                          )}
+                            )}
+                            {req.status === "pending" && (
+                              <>
+                                <Button variant="ghost" size="icon" title="Approve" onClick={() => updateTopupStatus(req.id, "approved")}>
+                                  <CheckCircle className="w-4 h-4 text-success" />
+                                </Button>
+                                <Button variant="ghost" size="icon" title="Reject" onClick={() => updateTopupStatus(req.id, "rejected")}>
+                                  <XCircle className="w-4 h-4 text-destructive" />
+                                </Button>
+                              </>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                   {topupRequests.length === 0 && (
                     <p className="text-center text-muted-foreground text-sm py-6">No topup requests yet.</p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Topup Admins */}
+            <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
+              <CardContent className="p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-semibold flex items-center gap-2"><UserPlus className="w-4 h-4 text-primary" /> Topup Admins</h3>
+                  <Button size="sm" onClick={() => { setTopupAdminEmail(""); setTopupAdminDialog(true); }}>
+                    <Plus className="w-4 h-4 mr-1" /> Add
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">Topup admins can view/approve payment requests but cannot change products, prices, or QR codes.</p>
+                <div className="space-y-2">
+                  {topupAdmins.map((ta) => (
+                    <div key={ta.id} className="flex items-center justify-between p-3 rounded-lg bg-background/50 border border-border/30">
+                      <div>
+                        <p className="text-sm font-medium">{ta.email}</p>
+                        <p className="text-xs text-muted-foreground">Added {new Date(ta.created_at).toLocaleDateString()}</p>
+                      </div>
+                      <Button variant="ghost" size="icon" onClick={() => removeTopupAdmin(ta.id)}>
+                        <Trash2 className="w-4 h-4 text-destructive" />
+                      </Button>
+                    </div>
+                  ))}
+                  {topupAdmins.length === 0 && (
+                    <p className="text-center text-muted-foreground text-xs py-2">No topup admins yet.</p>
                   )}
                 </div>
               </CardContent>
