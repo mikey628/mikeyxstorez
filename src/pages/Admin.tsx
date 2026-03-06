@@ -924,30 +924,76 @@ const Admin = () => {
                   </div>
                 </div>
 
-                {/* QR Upload */}
+                {/* QR Upload — 3 options */}
                 {topupSettings.payment_method === "qr" && (
-                  <div className="space-y-2">
-                    <label className="text-sm text-muted-foreground">Payment QR Code Image</label>
-                    {topupSettings.qr_url && (
-                      <img src={topupSettings.qr_url} alt="Payment QR" className="w-32 h-32 object-contain rounded-lg border border-border/50" />
-                    )}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={qrUploading}
-                      onClick={() => document.getElementById("topup-qr-input")?.click()}
-                    >
-                      <Upload className="w-4 h-4 mr-1" /> {qrUploading ? "Uploading..." : "Upload QR Image"}
-                    </Button>
-                    <input
-                      id="topup-qr-input"
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadTopupQr(f); }}
-                    />
+                  <div className="space-y-3">
+                    <label className="text-sm text-muted-foreground font-medium">Payment QR Codes (eSewa, Khalti, Bank)</label>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      {(["esewa", "khalti", "bank"] as const).map((type) => {
+                        const labels = { esewa: "eSewa", khalti: "Khalti", bank: "Bank Transfer" };
+                        const colors = { esewa: "text-green-500", khalti: "text-purple-500", bank: "text-blue-500" };
+                        const qrUrl = topupSettings[`${type}_qr_url` as keyof typeof topupSettings] as string;
+                        return (
+                          <div key={type} className="space-y-2 text-center">
+                            <p className={`text-xs font-medium ${colors[type]}`}>{labels[type]}</p>
+                            {qrUrl && (
+                              <img src={qrUrl} alt={`${type} QR`} className="w-24 h-24 object-contain mx-auto rounded-lg border border-border/50 bg-white p-1" />
+                            )}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="w-full text-xs"
+                              disabled={qrUploading === type}
+                              onClick={() => document.getElementById(`qr-input-${type}`)?.click()}
+                            >
+                              <Upload className="w-3 h-3 mr-1" />
+                              {qrUploading === type ? "Uploading..." : (qrUrl ? "Replace" : "Upload")}
+                            </Button>
+                            <input id={`qr-input-${type}`} type="file" accept="image/*" className="hidden"
+                              onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadTopupQr(f, type); }} />
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
+              </CardContent>
+            </Card>
+
+            {/* Servers Management */}
+            <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
+              <CardContent className="p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-semibold flex items-center gap-2"><Server className="w-4 h-4 text-primary" /> Game Servers</h3>
+                  <Button size="sm" onClick={() => { setEditServer(null); setServerForm({ name: "", flag: "🌐" }); setServerLogoFile(null); setServerDialog(true); }}>
+                    <Plus className="w-4 h-4 mr-1" /> Add Server
+                  </Button>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {topupServers.map((srv) => (
+                    <div key={srv.id} className="p-3 rounded-lg bg-background/50 border border-border/30 text-center relative group">
+                      {srv.logo_url ? (
+                        <img src={srv.logo_url} alt={srv.name} className="w-8 h-8 object-contain mx-auto mb-1 rounded" />
+                      ) : (
+                        <span className="text-2xl block mb-1">{srv.flag || "🌐"}</span>
+                      )}
+                      <p className="text-xs font-medium truncate">{srv.name}</p>
+                      <div className="absolute top-1 right-1 gap-0.5 hidden group-hover:flex">
+                        <button onClick={() => { setEditServer(srv); setServerForm({ name: srv.name, flag: srv.flag || "🌐" }); setServerLogoFile(null); setServerDialog(true); }}
+                          className="p-0.5 rounded bg-card/80 text-muted-foreground hover:text-foreground">
+                          <Edit className="w-3 h-3" />
+                        </button>
+                        <button onClick={() => deleteServer(srv.id)}
+                          className="p-0.5 rounded bg-card/80 text-muted-foreground hover:text-destructive">
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  {topupServers.length === 0 && (
+                    <p className="col-span-3 text-center text-muted-foreground text-xs py-3">No servers added yet.</p>
+                  )}
+                </div>
               </CardContent>
             </Card>
 
@@ -956,23 +1002,31 @@ const Admin = () => {
               <CardContent className="p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <h3 className="font-semibold flex items-center gap-2"><Package className="w-4 h-4 text-primary" /> Packages</h3>
-                  <Button size="sm" onClick={() => { setEditPkg(null); setPkgForm({ label: "", price: 0, duration_days: 0 }); setPkgDialog(true); }}>
+                  <Button size="sm" onClick={() => { setEditPkg(null); setPkgForm({ label: "", price: 0, duration_days: 0, description: "" }); setPkgImageFile(null); setPkgDialog(true); }}>
                     <Plus className="w-4 h-4 mr-1" /> Add
                   </Button>
                 </div>
-                <div className="space-y-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {topupPackages.map((pkg) => (
-                    <div key={pkg.id} className="flex items-center justify-between p-3 rounded-lg bg-background/50 border border-border/30">
-                      <div>
-                        <p className="font-medium text-sm">{pkg.label}</p>
-                        <p className="text-xs text-muted-foreground">{pkg.price} pts · {pkg.duration_days}d</p>
+                    <div key={pkg.id} className="flex items-center gap-3 p-3 rounded-lg bg-background/50 border border-border/30">
+                      {pkg.image_url ? (
+                        <img src={pkg.image_url} alt={pkg.label} className="w-10 h-10 object-cover rounded-lg shrink-0" />
+                      ) : (
+                        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                          <Package className="w-4 h-4 text-primary/50" />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm truncate">{pkg.label}</p>
+                        <p className="text-xs text-muted-foreground">${pkg.price} · {pkg.duration_days}d</p>
                       </div>
-                      <div className="flex gap-1">
-                        <Button variant="ghost" size="icon" onClick={() => { setEditPkg(pkg); setPkgForm({ label: pkg.label, price: pkg.price, duration_days: pkg.duration_days || 0 }); setPkgDialog(true); }}>
+                      <div className="flex gap-1 shrink-0">
+                        <Button variant="ghost" size="icon" onClick={() => { setEditPkg(pkg); setPkgForm({ label: pkg.label, price: pkg.price, duration_days: pkg.duration_days || 0, description: pkg.description || "" }); setPkgImageFile(null); setPkgDialog(true); }}>
                           <Edit className="w-4 h-4" />
                         </Button>
                         <Button variant="ghost" size="icon" onClick={async () => { await supabase.from("topup_packages").delete().eq("id", pkg.id); fetchAll(); }}>
                           <Trash2 className="w-4 h-4 text-destructive" />
+                        </Button>
                         </Button>
                       </div>
                     </div>
