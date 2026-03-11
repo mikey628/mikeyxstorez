@@ -164,6 +164,36 @@ const Admin = () => {
 
   useEffect(() => { if (isAdmin) fetchAll(); }, [isAdmin]);
 
+  // Realtime subscription for new topup requests
+  useEffect(() => {
+    if (!isAdmin) return;
+    const channel = supabase
+      .channel("topup-requests-admin-realtime")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "topup_requests" },
+        (payload) => {
+          setTopupRequests((prev) => [payload.new as any, ...prev]);
+          setPendingNotifCount((c) => c + 1);
+          setShowNotifBell(true);
+          toast.info(`🔔 New topup request: UID ${(payload.new as any).game_uid}`, {
+            description: `${(payload.new as any).product_name} · $${(payload.new as any).amount_paid}`,
+          });
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "topup_requests" },
+        (payload) => {
+          setTopupRequests((prev) =>
+            prev.map((r) => (r.id === (payload.new as any).id ? { ...r, ...(payload.new as any) } : r))
+          );
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [isAdmin]);
+
   if (!loading && !isAdmin) return <Navigate to="/dashboard" replace />;
 
   // Save social links
