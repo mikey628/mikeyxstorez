@@ -15,7 +15,7 @@ import {
   Users, Package, Key, Plus, Trash2, Edit, Search,
   Coins, Download, Ban, Shield, CheckCircle, XCircle, Upload,
   LogOut, Link as LinkIcon, Globe, Clock, Power, AlertTriangle, RotateCcw,
-  Tag, Gift, Image, Video, QrCode, CreditCard, Eye, ExternalLink, Server, UserPlus,
+  Tag, Gift, Image, Video, QrCode, CreditCard, Eye, ExternalLink, Server, UserPlus, Bell,
 } from "lucide-react";
 import { Navigate } from "react-router-dom";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
@@ -36,6 +36,10 @@ const Admin = () => {
   const [requireApproval, setRequireApproval] = useState(true);
   const [resetDialog, setResetDialog] = useState(false);
   const [resetType, setResetType] = useState<"keys" | "points" | "all">("all");
+
+  // Realtime notification
+  const [pendingNotifCount, setPendingNotifCount] = useState(0);
+  const [showNotifBell, setShowNotifBell] = useState(false);
 
   // Topup management
   const [topupRequests, setTopupRequests] = useState<any[]>([]);
@@ -130,6 +134,9 @@ const Admin = () => {
     setTopupPackages(topupPkgs || []);
     setTopupServers(srvs || []);
     setTopupAdmins(tadmins || []);
+    // Sync pending count from fresh load
+    const pending = (topupReqs || []).filter((r: any) => r.status === "pending").length;
+    setPendingNotifCount(pending);
 
     const links: Record<string, string> = { whatsapp_link: "", tiktok_link: "", discord_link: "" };
     let mMode = false;
@@ -159,6 +166,36 @@ const Admin = () => {
   };
 
   useEffect(() => { if (isAdmin) fetchAll(); }, [isAdmin]);
+
+  // Realtime subscription for new topup requests
+  useEffect(() => {
+    if (!isAdmin) return;
+    const channel = supabase
+      .channel("topup-requests-admin-realtime")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "topup_requests" },
+        (payload) => {
+          setTopupRequests((prev) => [payload.new as any, ...prev]);
+          setPendingNotifCount((c) => c + 1);
+          setShowNotifBell(true);
+          toast.info(`🔔 New topup request: UID ${(payload.new as any).game_uid}`, {
+            description: `${(payload.new as any).product_name} · $${(payload.new as any).amount_paid}`,
+          });
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "topup_requests" },
+        (payload) => {
+          setTopupRequests((prev) =>
+            prev.map((r) => (r.id === (payload.new as any).id ? { ...r, ...(payload.new as any) } : r))
+          );
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [isAdmin]);
 
   if (!loading && !isAdmin) return <Navigate to="/dashboard" replace />;
 
@@ -552,9 +589,33 @@ const Admin = () => {
     <DashboardLayout>
       <AnimatedBackground />
       <div className="space-y-6 relative z-10">
-        <motion.div className="flex items-center gap-2" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-          <Shield className="w-6 h-6 text-primary" />
-          <h1 className="text-2xl font-bold">Admin Panel</h1>
+        <motion.div className="flex items-center justify-between" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+          <div className="flex items-center gap-2">
+            <Shield className="w-6 h-6 text-primary" />
+            <h1 className="text-2xl font-bold">Admin Panel</h1>
+          </div>
+          {/* Notification Bell */}
+          <button
+            onClick={() => {
+              setPendingNotifCount(0);
+              setShowNotifBell(false);
+              // Scroll to topup tab
+              document.querySelector('[value="topup"]')?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+            }}
+            className="relative p-2 rounded-lg hover:bg-accent transition-colors"
+            title={`${pendingNotifCount} pending topup request${pendingNotifCount !== 1 ? "s" : ""}`}
+          >
+            <Bell className={`w-5 h-5 ${showNotifBell ? "text-primary" : "text-muted-foreground"}`} />
+            {pendingNotifCount > 0 && (
+              <motion.span
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                className="absolute -top-0.5 -right-0.5 w-5 h-5 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full flex items-center justify-center"
+              >
+                {pendingNotifCount > 99 ? "99+" : pendingNotifCount}
+              </motion.span>
+            )}
+          </button>
         </motion.div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -580,7 +641,14 @@ const Admin = () => {
             <TabsTrigger value="keys">Keys</TabsTrigger>
             <TabsTrigger value="transactions">Txns</TabsTrigger>
             <TabsTrigger value="offers">Offers</TabsTrigger>
-            <TabsTrigger value="topup">Topup</TabsTrigger>
+            <TabsTrigger value="topup" className="relative" onClick={() => { setPendingNotifCount(0); setShowNotifBell(false); }}>
+              Topup
+              {pendingNotifCount > 0 && (
+                <span className="ml-1.5 inline-flex items-center justify-center w-4 h-4 text-[10px] font-bold bg-destructive text-destructive-foreground rounded-full">
+                  {pendingNotifCount > 9 ? "9+" : pendingNotifCount}
+                </span>
+              )}
+            </TabsTrigger>
             <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
 
