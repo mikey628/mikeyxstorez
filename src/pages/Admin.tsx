@@ -15,7 +15,7 @@ import {
   Users, Package, Key, Plus, Trash2, Edit, Search,
   Coins, Download, Ban, Shield, CheckCircle, XCircle, Upload,
   LogOut, Link as LinkIcon, Globe, Clock, Power, AlertTriangle, RotateCcw,
-  Tag, Gift, Image, Video, QrCode, CreditCard, Eye, ExternalLink, Server, UserPlus,
+  Tag, Gift, Image, Video, QrCode, CreditCard, Eye, ExternalLink, Server, UserPlus, Bell,
 } from "lucide-react";
 import { Navigate } from "react-router-dom";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
