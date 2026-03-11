@@ -134,6 +134,9 @@ const Admin = () => {
     setTopupPackages(topupPkgs || []);
     setTopupServers(srvs || []);
     setTopupAdmins(tadmins || []);
+    // Sync pending count from fresh load
+    const pending = (topupReqs || []).filter((r: any) => r.status === "pending").length;
+    setPendingNotifCount(pending);
 
     const links: Record<string, string> = { whatsapp_link: "", tiktok_link: "", discord_link: "" };
     let mMode = false;
