@@ -589,9 +589,33 @@ const Admin = () => {
     <DashboardLayout>
       <AnimatedBackground />
       <div className="space-y-6 relative z-10">
-        <motion.div className="flex items-center gap-2" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-          <Shield className="w-6 h-6 text-primary" />
-          <h1 className="text-2xl font-bold">Admin Panel</h1>
+        <motion.div className="flex items-center justify-between" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+          <div className="flex items-center gap-2">
+            <Shield className="w-6 h-6 text-primary" />
+            <h1 className="text-2xl font-bold">Admin Panel</h1>
+          </div>
+          {/* Notification Bell */}
+          <button
+            onClick={() => {
+              setPendingNotifCount(0);
+              setShowNotifBell(false);
+              // Scroll to topup tab
+              document.querySelector('[value="topup"]')?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+            }}
+            className="relative p-2 rounded-lg hover:bg-accent transition-colors"
+            title={`${pendingNotifCount} pending topup request${pendingNotifCount !== 1 ? "s" : ""}`}
+          >
+            <Bell className={`w-5 h-5 ${showNotifBell ? "text-primary" : "text-muted-foreground"}`} />
+            {pendingNotifCount > 0 && (
+              <motion.span
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                className="absolute -top-0.5 -right-0.5 w-5 h-5 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full flex items-center justify-center"
+              >
+                {pendingNotifCount > 99 ? "99+" : pendingNotifCount}
+              </motion.span>
+            )}
+          </button>
         </motion.div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
