@@ -37,6 +37,10 @@ const Admin = () => {
   const [resetDialog, setResetDialog] = useState(false);
   const [resetType, setResetType] = useState<"keys" | "points" | "all">("all");
 
+  // Realtime notification
+  const [pendingNotifCount, setPendingNotifCount] = useState(0);
+  const [showNotifBell, setShowNotifBell] = useState(false);
+
   // Topup management
   const [topupRequests, setTopupRequests] = useState<any[]>([]);
   const [topupPackages, setTopupPackages] = useState<any[]>([]);
