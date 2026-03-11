@@ -641,7 +641,14 @@ const Admin = () => {
             <TabsTrigger value="keys">Keys</TabsTrigger>
             <TabsTrigger value="transactions">Txns</TabsTrigger>
             <TabsTrigger value="offers">Offers</TabsTrigger>
-            <TabsTrigger value="topup">Topup</TabsTrigger>
+            <TabsTrigger value="topup" className="relative" onClick={() => { setPendingNotifCount(0); setShowNotifBell(false); }}>
+              Topup
+              {pendingNotifCount > 0 && (
+                <span className="ml-1.5 inline-flex items-center justify-center w-4 h-4 text-[10px] font-bold bg-destructive text-destructive-foreground rounded-full">
+                  {pendingNotifCount > 9 ? "9+" : pendingNotifCount}
+                </span>
+              )}
+            </TabsTrigger>
             <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
 
