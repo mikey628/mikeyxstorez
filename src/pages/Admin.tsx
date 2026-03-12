@@ -396,11 +396,38 @@ const Admin = () => {
     const updates = [
       { key: "topup_payment_method", value: topupSettings.payment_method },
       { key: "topup_processing_time", value: topupSettings.processing_time },
+      { key: "topup_currency", value: topupSettings.currency },
+      { key: "topup_admin_can_view_proofs", value: topupSettings.admin_can_view_proofs },
+      { key: "topup_admin_can_approve", value: topupSettings.admin_can_approve },
+      { key: "topup_admin_can_reject", value: topupSettings.admin_can_reject },
     ];
     for (const u of updates) {
       await supabase.from("site_settings").update({ value: u.value }).eq("key", u.key);
     }
     toast.success("Topup settings saved!");
+  };
+
+  // Generate signed URL for private payment proof (bucket is private)
+  const viewProof = async (storagePath: string) => {
+    if (!storagePath) return;
+    setProofViewLoading(true);
+    setProofViewUrl(null);
+    // If it's already a full URL (legacy), show directly
+    if (storagePath.startsWith("http")) {
+      setProofViewUrl(storagePath);
+      setProofViewLoading(false);
+      return;
+    }
+    const { data, error } = await supabase.storage
+      .from("payment-proofs")
+      .createSignedUrl(storagePath, 3600); // 1 hour expiry
+    if (error || !data?.signedUrl) {
+      toast.error("Could not load proof image");
+      setProofViewLoading(false);
+      return;
+    }
+    setProofViewUrl(data.signedUrl);
+    setProofViewLoading(false);
   };
 
   const uploadTopupQr = async (file: File, type: "esewa" | "khalti" | "bank") => {
