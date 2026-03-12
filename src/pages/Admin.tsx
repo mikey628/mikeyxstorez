@@ -1002,19 +1002,31 @@ const Admin = () => {
                     <p className="text-xs text-muted-foreground">Choose how users pay</p>
                   </div>
                   <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      variant={topupSettings.payment_method === "qr" ? "default" : "outline"}
-                      onClick={() => setTopupSettings(s => ({ ...s, payment_method: "qr" }))}
-                    >
+                    <Button size="sm" variant={topupSettings.payment_method === "qr" ? "default" : "outline"}
+                      onClick={() => setTopupSettings(s => ({ ...s, payment_method: "qr" }))}>
                       <QrCode className="w-3 h-3 mr-1" /> QR Pay
                     </Button>
-                    <Button
-                      size="sm"
-                      variant={topupSettings.payment_method === "points" ? "default" : "outline"}
-                      onClick={() => setTopupSettings(s => ({ ...s, payment_method: "points" }))}
-                    >
+                    <Button size="sm" variant={topupSettings.payment_method === "points" ? "default" : "outline"}
+                      onClick={() => setTopupSettings(s => ({ ...s, payment_method: "points" }))}>
                       <CreditCard className="w-3 h-3 mr-1" /> Points
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Currency Toggle */}
+                <div className="flex items-center justify-between py-2 border-b border-border/30">
+                  <div>
+                    <p className="text-sm font-medium">💱 Price Currency</p>
+                    <p className="text-xs text-muted-foreground">Shown on package prices</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant={topupSettings.currency === "USD" ? "default" : "outline"}
+                      onClick={() => setTopupSettings(s => ({ ...s, currency: "USD" }))}>
+                      $ USD
+                    </Button>
+                    <Button size="sm" variant={topupSettings.currency === "NPR" ? "default" : "outline"}
+                      onClick={() => setTopupSettings(s => ({ ...s, currency: "NPR" }))}>
+                      Rs. NPR
                     </Button>
                   </div>
                 </div>
@@ -1029,13 +1041,36 @@ const Admin = () => {
                       onChange={(e) => setTopupSettings(s => ({ ...s, processing_time: e.target.value }))}
                       className="bg-background/50"
                     />
-                    <Button onClick={saveTopupSettings}>Save</Button>
+                    <Button onClick={saveTopupSettings}>Save All</Button>
                   </div>
+                </div>
+
+                {/* Topup Admin Permissions */}
+                <div className="space-y-2 pt-2 border-t border-border/30">
+                  <p className="text-sm font-medium flex items-center gap-2"><Shield className="w-3.5 h-3.5 text-primary" /> Topup Admin Permissions</p>
+                  <p className="text-xs text-muted-foreground">Control what topup admins can do</p>
+                  {[
+                    { key: "admin_can_view_proofs" as const, label: "Can view payment proofs" },
+                    { key: "admin_can_approve" as const, label: "Can approve requests" },
+                    { key: "admin_can_reject" as const, label: "Can reject requests" },
+                  ].map(({ key, label }) => (
+                    <div key={key} className="flex items-center justify-between py-1.5 px-3 rounded-lg bg-background/50 border border-border/30">
+                      <span className="text-sm">{label}</span>
+                      <Button
+                        size="sm"
+                        variant={topupSettings[key] === "true" ? "default" : "outline"}
+                        className="h-7 text-xs"
+                        onClick={() => setTopupSettings(s => ({ ...s, [key]: s[key] === "true" ? "false" : "true" }))}
+                      >
+                        {topupSettings[key] === "true" ? "✅ ON" : "❌ OFF"}
+                      </Button>
+                    </div>
+                  ))}
                 </div>
 
                 {/* QR Upload — 3 options */}
                 {topupSettings.payment_method === "qr" && (
-                  <div className="space-y-3">
+                  <div className="space-y-3 pt-2 border-t border-border/30">
                     <label className="text-sm text-muted-foreground font-medium">Payment QR Codes (eSewa, Khalti, Bank)</label>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       {(["esewa", "khalti", "bank"] as const).map((type) => {
@@ -1048,13 +1083,8 @@ const Admin = () => {
                             {qrUrl && (
                               <img src={qrUrl} alt={`${type} QR`} className="w-24 h-24 object-contain mx-auto rounded-lg border border-border/50 bg-white p-1" />
                             )}
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="w-full text-xs"
-                              disabled={qrUploading === type}
-                              onClick={() => document.getElementById(`qr-input-${type}`)?.click()}
-                            >
+                            <Button variant="outline" size="sm" className="w-full text-xs" disabled={qrUploading === type}
+                              onClick={() => document.getElementById(`qr-input-${type}`)?.click()}>
                               <Upload className="w-3 h-3 mr-1" />
                               {qrUploading === type ? "Uploading..." : (qrUrl ? "Replace" : "Upload")}
                             </Button>
