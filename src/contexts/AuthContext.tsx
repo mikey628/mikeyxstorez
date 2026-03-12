@@ -7,6 +7,7 @@ interface AuthContextType {
   session: Session | null;
   loading: boolean;
   isAdmin: boolean;
+  isTopupAdmin: boolean;
   profile: any;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -17,6 +18,7 @@ const AuthContext = createContext<AuthContextType>({
   session: null,
   loading: true,
   isAdmin: false,
+  isTopupAdmin: false,
   profile: null,
   signOut: async () => {},
   refreshProfile: async () => {},
@@ -29,6 +31,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isTopupAdmin, setIsTopupAdmin] = useState(false);
   const [profile, setProfile] = useState<any>(null);
 
   const fetchProfile = async (userId: string) => {
@@ -49,6 +52,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsAdmin(!!(data && data.length > 0));
   };
 
+  const checkTopupAdmin = async (userId: string) => {
+    const { data } = await supabase
+      .from("topup_admins")
+      .select("id")
+      .eq("user_id", userId)
+      .maybeSingle();
+    setIsTopupAdmin(!!data);
+  };
+
   const refreshProfile = async () => {
     if (user) {
       await fetchProfile(user.id);
@@ -64,10 +76,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setTimeout(async () => {
             await fetchProfile(session.user.id);
             await checkAdmin(session.user.id);
+            await checkTopupAdmin(session.user.id);
           }, 0);
         } else {
           setProfile(null);
           setIsAdmin(false);
+          setIsTopupAdmin(false);
         }
         setLoading(false);
       }
@@ -79,6 +93,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (session?.user) {
         fetchProfile(session.user.id);
         checkAdmin(session.user.id);
+        checkTopupAdmin(session.user.id);
       }
       setLoading(false);
     });
@@ -92,10 +107,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setSession(null);
     setProfile(null);
     setIsAdmin(false);
+    setIsTopupAdmin(false);
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, isAdmin, profile, signOut, refreshProfile }}>
+    <AuthContext.Provider value={{ user, session, loading, isAdmin, isTopupAdmin, profile, signOut, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );

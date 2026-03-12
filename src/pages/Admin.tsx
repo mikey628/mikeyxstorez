@@ -52,6 +52,10 @@ const Admin = () => {
     esewa_qr_url: "",
     khalti_qr_url: "",
     bank_qr_url: "",
+    currency: "USD",
+    admin_can_view_proofs: "true",
+    admin_can_approve: "true",
+    admin_can_reject: "true",
   });
   const [qrUploading, setQrUploading] = useState<string | null>(null);
   const [pkgDialog, setPkgDialog] = useState(false);
@@ -59,6 +63,7 @@ const Admin = () => {
   const [pkgForm, setPkgForm] = useState({ label: "", price: 0, duration_days: 0, description: "" });
   const [pkgImageFile, setPkgImageFile] = useState<File | null>(null);
   const [proofViewUrl, setProofViewUrl] = useState<string | null>(null);
+  const [proofViewLoading, setProofViewLoading] = useState(false);
 
   // Server management
   const [serverDialog, setServerDialog] = useState(false);
@@ -141,7 +146,12 @@ const Admin = () => {
     const links: Record<string, string> = { whatsapp_link: "", tiktok_link: "", discord_link: "" };
     let mMode = false;
     let reqApproval = true;
-    const ts = { payment_method: "qr", processing_time: "5-30 minutes", esewa_qr_url: "", khalti_qr_url: "", bank_qr_url: "" };
+    const ts = { 
+      payment_method: "qr", processing_time: "5-30 minutes", 
+      esewa_qr_url: "", khalti_qr_url: "", bank_qr_url: "",
+      currency: "USD",
+      admin_can_view_proofs: "true", admin_can_approve: "true", admin_can_reject: "true",
+    };
     (settings || []).forEach((s: any) => {
       if (s.key === "maintenance_mode") mMode = s.value === "true";
       else if (s.key === "require_approval") reqApproval = s.value !== "false";
@@ -152,6 +162,10 @@ const Admin = () => {
       else if (s.key === "esewa_qr_url") ts.esewa_qr_url = s.value || "";
       else if (s.key === "khalti_qr_url") ts.khalti_qr_url = s.value || "";
       else if (s.key === "bank_qr_url") ts.bank_qr_url = s.value || "";
+      else if (s.key === "topup_currency") ts.currency = s.value || "USD";
+      else if (s.key === "topup_admin_can_view_proofs") ts.admin_can_view_proofs = s.value || "true";
+      else if (s.key === "topup_admin_can_approve") ts.admin_can_approve = s.value || "true";
+      else if (s.key === "topup_admin_can_reject") ts.admin_can_reject = s.value || "true";
       else links[s.key] = s.value || "";
     });
     setSocialLinks(links);
@@ -382,11 +396,38 @@ const Admin = () => {
     const updates = [
       { key: "topup_payment_method", value: topupSettings.payment_method },
       { key: "topup_processing_time", value: topupSettings.processing_time },
+      { key: "topup_currency", value: topupSettings.currency },
+      { key: "topup_admin_can_view_proofs", value: topupSettings.admin_can_view_proofs },
+      { key: "topup_admin_can_approve", value: topupSettings.admin_can_approve },
+      { key: "topup_admin_can_reject", value: topupSettings.admin_can_reject },
     ];
     for (const u of updates) {
       await supabase.from("site_settings").update({ value: u.value }).eq("key", u.key);
     }
     toast.success("Topup settings saved!");
+  };
+
+  // Generate signed URL for private payment proof (bucket is private)
+  const viewProof = async (storagePath: string) => {
+    if (!storagePath) return;
+    setProofViewLoading(true);
+    setProofViewUrl(null);
+    // If it's already a full URL (legacy), show directly
+    if (storagePath.startsWith("http")) {
+      setProofViewUrl(storagePath);
+      setProofViewLoading(false);
+      return;
+    }
+    const { data, error } = await supabase.storage
+      .from("payment-proofs")
+      .createSignedUrl(storagePath, 3600); // 1 hour expiry
+    if (error || !data?.signedUrl) {
+      toast.error("Could not load proof image");
+      setProofViewLoading(false);
+      return;
+    }
+    setProofViewUrl(data.signedUrl);
+    setProofViewLoading(false);
   };
 
   const uploadTopupQr = async (file: File, type: "esewa" | "khalti" | "bank") => {
@@ -961,19 +1002,31 @@ const Admin = () => {
                     <p className="text-xs text-muted-foreground">Choose how users pay</p>
                   </div>
                   <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      variant={topupSettings.payment_method === "qr" ? "default" : "outline"}
-                      onClick={() => setTopupSettings(s => ({ ...s, payment_method: "qr" }))}
-                    >
+                    <Button size="sm" variant={topupSettings.payment_method === "qr" ? "default" : "outline"}
+                      onClick={() => setTopupSettings(s => ({ ...s, payment_method: "qr" }))}>
                       <QrCode className="w-3 h-3 mr-1" /> QR Pay
                     </Button>
-                    <Button
-                      size="sm"
-                      variant={topupSettings.payment_method === "points" ? "default" : "outline"}
-                      onClick={() => setTopupSettings(s => ({ ...s, payment_method: "points" }))}
-                    >
+                    <Button size="sm" variant={topupSettings.payment_method === "points" ? "default" : "outline"}
+                      onClick={() => setTopupSettings(s => ({ ...s, payment_method: "points" }))}>
                       <CreditCard className="w-3 h-3 mr-1" /> Points
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Currency Toggle */}
+                <div className="flex items-center justify-between py-2 border-b border-border/30">
+                  <div>
+                    <p className="text-sm font-medium">💱 Price Currency</p>
+                    <p className="text-xs text-muted-foreground">Shown on package prices</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant={topupSettings.currency === "USD" ? "default" : "outline"}
+                      onClick={() => setTopupSettings(s => ({ ...s, currency: "USD" }))}>
+                      $ USD
+                    </Button>
+                    <Button size="sm" variant={topupSettings.currency === "NPR" ? "default" : "outline"}
+                      onClick={() => setTopupSettings(s => ({ ...s, currency: "NPR" }))}>
+                      Rs. NPR
                     </Button>
                   </div>
                 </div>
@@ -988,13 +1041,36 @@ const Admin = () => {
                       onChange={(e) => setTopupSettings(s => ({ ...s, processing_time: e.target.value }))}
                       className="bg-background/50"
                     />
-                    <Button onClick={saveTopupSettings}>Save</Button>
+                    <Button onClick={saveTopupSettings}>Save All</Button>
                   </div>
+                </div>
+
+                {/* Topup Admin Permissions */}
+                <div className="space-y-2 pt-2 border-t border-border/30">
+                  <p className="text-sm font-medium flex items-center gap-2"><Shield className="w-3.5 h-3.5 text-primary" /> Topup Admin Permissions</p>
+                  <p className="text-xs text-muted-foreground">Control what topup admins can do</p>
+                  {[
+                    { key: "admin_can_view_proofs" as const, label: "Can view payment proofs" },
+                    { key: "admin_can_approve" as const, label: "Can approve requests" },
+                    { key: "admin_can_reject" as const, label: "Can reject requests" },
+                  ].map(({ key, label }) => (
+                    <div key={key} className="flex items-center justify-between py-1.5 px-3 rounded-lg bg-background/50 border border-border/30">
+                      <span className="text-sm">{label}</span>
+                      <Button
+                        size="sm"
+                        variant={topupSettings[key] === "true" ? "default" : "outline"}
+                        className="h-7 text-xs"
+                        onClick={() => setTopupSettings(s => ({ ...s, [key]: s[key] === "true" ? "false" : "true" }))}
+                      >
+                        {topupSettings[key] === "true" ? "✅ ON" : "❌ OFF"}
+                      </Button>
+                    </div>
+                  ))}
                 </div>
 
                 {/* QR Upload — 3 options */}
                 {topupSettings.payment_method === "qr" && (
-                  <div className="space-y-3">
+                  <div className="space-y-3 pt-2 border-t border-border/30">
                     <label className="text-sm text-muted-foreground font-medium">Payment QR Codes (eSewa, Khalti, Bank)</label>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       {(["esewa", "khalti", "bank"] as const).map((type) => {
@@ -1007,13 +1083,8 @@ const Admin = () => {
                             {qrUrl && (
                               <img src={qrUrl} alt={`${type} QR`} className="w-24 h-24 object-contain mx-auto rounded-lg border border-border/50 bg-white p-1" />
                             )}
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="w-full text-xs"
-                              disabled={qrUploading === type}
-                              onClick={() => document.getElementById(`qr-input-${type}`)?.click()}
-                            >
+                            <Button variant="outline" size="sm" className="w-full text-xs" disabled={qrUploading === type}
+                              onClick={() => document.getElementById(`qr-input-${type}`)?.click()}>
                               <Upload className="w-3 h-3 mr-1" />
                               {qrUploading === type ? "Uploading..." : (qrUrl ? "Replace" : "Upload")}
                             </Button>
@@ -1123,20 +1194,20 @@ const Admin = () => {
                               <span className="text-xs text-muted-foreground">{new Date(req.created_at).toLocaleDateString()}</span>
                             </div>
                             <p className="font-medium text-sm mt-1">
-                              UID: <span className="font-mono">{req.game_uid}</span>
-                              {req.game_name && req.game_name !== `User@${req.game_uid}` && (
-                                <span className="text-primary ml-1">· {req.game_name}</span>
-                              )}
-                            </p>
-                            <p className="text-xs text-muted-foreground">{req.duration_label} · ${req.amount_paid}</p>
-                            {req.server_name && <p className="text-xs text-muted-foreground">Server: {req.server_name}</p>}
-                            {userInfo && <p className="text-xs text-muted-foreground">User: {userInfo.email}</p>}
-                            {req.payment_method && <p className="text-xs text-muted-foreground">Payment: {req.payment_method.replace("qr_", "").toUpperCase()}</p>}
-                          </div>
-                          <div className="flex gap-1 shrink-0 flex-col">
-                            {req.payment_proof_url && (
-                              <Button variant="ghost" size="icon" title="View proof" onClick={() => setProofViewUrl(req.payment_proof_url)}>
-                                <Eye className="w-4 h-4" />
+                               UID: <span className="font-mono">{req.game_uid}</span>
+                               {req.game_name && req.game_name !== `User@${req.game_uid}` && (
+                                 <span className="text-primary ml-2 font-semibold">🎮 {req.game_name}</span>
+                               )}
+                             </p>
+                             <p className="text-xs text-muted-foreground">{req.duration_label} · {topupSettings.currency === "NPR" ? "Rs." : "$"}{req.amount_paid}</p>
+                             {req.server_name && <p className="text-xs text-muted-foreground">Server: {req.server_name}</p>}
+                             {userInfo && <p className="text-xs text-muted-foreground">User: {userInfo.email}</p>}
+                             {req.payment_method && <p className="text-xs text-muted-foreground">Payment: {req.payment_method.replace("qr_", "").toUpperCase()}</p>}
+                           </div>
+                           <div className="flex gap-1 shrink-0 flex-col">
+                             {req.payment_proof_url && topupSettings.admin_can_view_proofs === "true" && (
+                               <Button variant="ghost" size="icon" title="View proof" onClick={() => viewProof(req.payment_proof_url)}>
+                                 {proofViewLoading ? <span className="w-4 h-4 rounded-full border-2 border-primary border-t-transparent animate-spin" /> : <Eye className="w-4 h-4" />}
                               </Button>
                             )}
                             {req.status === "pending" && (
@@ -1470,19 +1541,24 @@ const Admin = () => {
         </Dialog>
 
         {/* Proof View Dialog */}
-        <Dialog open={!!proofViewUrl} onOpenChange={() => setProofViewUrl(null)}>
+        <Dialog open={!!proofViewUrl || proofViewLoading} onOpenChange={() => { setProofViewUrl(null); setProofViewLoading(false); }}>
           <DialogContent className="bg-card/95 backdrop-blur-xl max-w-xl">
             <DialogHeader>
               <DialogTitle>Payment Proof</DialogTitle>
             </DialogHeader>
-            {proofViewUrl && (
+            {proofViewLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <span className="w-8 h-8 rounded-full border-4 border-primary border-t-transparent animate-spin" />
+                <span className="ml-3 text-muted-foreground text-sm">Loading image...</span>
+              </div>
+            ) : proofViewUrl ? (
               <div className="space-y-3">
-                <img src={proofViewUrl} alt="Payment proof" className="w-full max-h-96 object-contain rounded-lg" />
+                <img src={proofViewUrl} alt="Payment proof" className="w-full max-h-96 object-contain rounded-lg border border-border/50" />
                 <Button variant="outline" className="w-full" onClick={() => window.open(proofViewUrl, "_blank")}>
                   <ExternalLink className="w-4 h-4 mr-1" /> Open Full Image
                 </Button>
               </div>
-            )}
+            ) : null}
           </DialogContent>
         </Dialog>
       </div>
@@ -1491,4 +1567,5 @@ const Admin = () => {
 };
 
 export default Admin;
+
 

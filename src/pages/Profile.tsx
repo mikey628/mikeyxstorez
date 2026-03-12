@@ -9,10 +9,12 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Camera, User, Mail, Save, Phone, Eye, EyeOff, Coins, Clock, CheckCircle, XCircle, AlertCircle } from "lucide-react";
+import { Camera, User, Mail, Save, Phone, Eye, EyeOff, Coins, Clock, CheckCircle, XCircle, AlertCircle, Shield } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const Profile = () => {
-  const { user, profile, refreshProfile } = useAuth();
+  const { user, profile, refreshProfile, isTopupAdmin } = useAuth();
+
   const { t } = useLanguage();
   const [displayName, setDisplayName] = useState(profile?.display_name || "");
   const [phoneNumber, setPhoneNumber] = useState(profile?.phone_number || "");
@@ -83,7 +85,16 @@ const Profile = () => {
   return (
     <DashboardLayout>
       <div className="space-y-6 max-w-lg mx-auto">
-        <h1 className="text-2xl font-bold">{t("profile")}</h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold">{t("profile")}</h1>
+          {isTopupAdmin && (
+            <Link to="/topup-admin">
+              <Button size="sm" className="gap-2">
+                <Shield className="w-4 h-4" /> Topup Admin Panel
+              </Button>
+            </Link>
+          )}
+        </div>
 
         <Tabs defaultValue="account">
           <TabsList className="w-full">
