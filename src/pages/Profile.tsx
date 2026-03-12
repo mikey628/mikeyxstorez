@@ -9,10 +9,12 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Camera, User, Mail, Save, Phone, Eye, EyeOff, Coins, Clock, CheckCircle, XCircle, AlertCircle } from "lucide-react";
+import { Camera, User, Mail, Save, Phone, Eye, EyeOff, Coins, Clock, CheckCircle, XCircle, AlertCircle, Shield } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const Profile = () => {
-  const { user, profile, refreshProfile } = useAuth();
+  const { user, profile, refreshProfile, isTopupAdmin } = useAuth();
+
   const { t } = useLanguage();
   const [displayName, setDisplayName] = useState(profile?.display_name || "");
   const [phoneNumber, setPhoneNumber] = useState(profile?.phone_number || "");
