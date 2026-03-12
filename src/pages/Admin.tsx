@@ -146,7 +146,12 @@ const Admin = () => {
     const links: Record<string, string> = { whatsapp_link: "", tiktok_link: "", discord_link: "" };
     let mMode = false;
     let reqApproval = true;
-    const ts = { payment_method: "qr", processing_time: "5-30 minutes", esewa_qr_url: "", khalti_qr_url: "", bank_qr_url: "" };
+    const ts = { 
+      payment_method: "qr", processing_time: "5-30 minutes", 
+      esewa_qr_url: "", khalti_qr_url: "", bank_qr_url: "",
+      currency: "USD",
+      admin_can_view_proofs: "true", admin_can_approve: "true", admin_can_reject: "true",
+    };
     (settings || []).forEach((s: any) => {
       if (s.key === "maintenance_mode") mMode = s.value === "true";
       else if (s.key === "require_approval") reqApproval = s.value !== "false";
@@ -157,6 +162,10 @@ const Admin = () => {
       else if (s.key === "esewa_qr_url") ts.esewa_qr_url = s.value || "";
       else if (s.key === "khalti_qr_url") ts.khalti_qr_url = s.value || "";
       else if (s.key === "bank_qr_url") ts.bank_qr_url = s.value || "";
+      else if (s.key === "topup_currency") ts.currency = s.value || "USD";
+      else if (s.key === "topup_admin_can_view_proofs") ts.admin_can_view_proofs = s.value || "true";
+      else if (s.key === "topup_admin_can_approve") ts.admin_can_approve = s.value || "true";
+      else if (s.key === "topup_admin_can_reject") ts.admin_can_reject = s.value || "true";
       else links[s.key] = s.value || "";
     });
     setSocialLinks(links);
