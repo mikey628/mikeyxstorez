@@ -10,18 +10,52 @@ import { motion } from "framer-motion";
 import { toast } from "sonner";
 import {
   Coins, Upload, CheckCircle, Clock, Package, User, CreditCard, QrCode,
-  AlertTriangle, Download, Server, ChevronRight, Image as ImageIcon,
+  AlertTriangle, Download, Server, ChevronRight, Gamepad2,
 } from "lucide-react";
+
+// Realistic game name prefixes for UID verification simulation
+const GAME_NAME_PREFIXES = ["x","Shadow","Dark","Pro","Elite","King","Fire","Ice","Storm","Wolf","Dragon","Night","Ghost","Ace","Star"];
+const GAME_NAME_SUFFIXES = ["GG","Gaming","YT","FF","BR","99","007","XD","FTW","EZ"];
+
+function simulateGameName(uid: string): string {
+  // Use UID as seed for consistent results
+  const seed = uid.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
+  const pre = GAME_NAME_PREFIXES[seed % GAME_NAME_PREFIXES.length];
+  const suf = GAME_NAME_SUFFIXES[(seed * 7) % GAME_NAME_SUFFIXES.length];
+  const num = (seed % 9000) + 1000;
+  return `${pre}${suf}${num}`;
+}
+
+const STORAGE_KEY = "topup_form_state";
+
+function loadSavedState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return null;
+}
+
+function saveState(state: any) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch {}
+}
 
 const Topup = () => {
   const { user, profile } = useAuth();
   const [packages, setPackages] = useState<any[]>([]);
   const [servers, setServers] = useState<any[]>([]);
   const [settings, setSettings] = useState<Record<string, string>>({});
-  const [selectedPkg, setSelectedPkg] = useState<any>(null);
-  const [selectedServer, setSelectedServer] = useState<any>(null);
-  const [gameUid, setGameUid] = useState("");
-  const [uidVerified, setUidVerified] = useState(false);
+
+  // Restore from localStorage
+  const saved = loadSavedState();
+  const [selectedPkg, setSelectedPkg] = useState<any>(saved?.selectedPkg || null);
+  const [selectedServer, setSelectedServer] = useState<any>(saved?.selectedServer || null);
+  const [gameUid, setGameUid] = useState(saved?.gameUid || "");
+  const [gameName, setGameName] = useState(saved?.gameName || "");
+  const [uidVerified, setUidVerified] = useState(saved?.uidVerified || false);
+
   const [verifyLoading, setVerifyLoading] = useState(false);
   const [proofFile, setProofFile] = useState<File | null>(null);
   const [proofPreview, setProofPreview] = useState<string | null>(null);
@@ -30,6 +64,11 @@ const Topup = () => {
   const [fakeWarning, setFakeWarning] = useState(false);
   const [selectedQr, setSelectedQr] = useState<"esewa" | "khalti" | "bank">("esewa");
   const proofRef = useRef<HTMLInputElement>(null);
+
+  // Persist form state to localStorage whenever key fields change
+  useEffect(() => {
+    saveState({ selectedPkg, selectedServer, gameUid, gameName, uidVerified });
+  }, [selectedPkg, selectedServer, gameUid, gameName, uidVerified]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -43,12 +82,24 @@ const Topup = () => {
       const s: Record<string, string> = {};
       (siteSettings || []).forEach((x: any) => { s[x.key] = x.value || ""; });
       setSettings(s);
+
+      // Restore server object from saved id (since we have full list now)
+      if (saved?.selectedServer?.id) {
+        const found = (srvs || []).find((srv: any) => srv.id === saved.selectedServer.id);
+        if (found) setSelectedServer(found);
+      }
+      if (saved?.selectedPkg?.id) {
+        const found = (pkgs || []).find((pkg: any) => pkg.id === saved.selectedPkg.id);
+        if (found) setSelectedPkg(found);
+      }
     };
     fetchData();
   }, []);
 
   const paymentMethod = settings["topup_payment_method"] || "qr";
   const processingTime = settings["topup_processing_time"] || "5-30 minutes";
+  const currency = settings["topup_currency"] || "USD";
+  const currencySymbol = currency === "NPR" ? "Rs." : "$";
 
   const qrOptions = [
     { key: "esewa" as const, label: "eSewa", color: "text-green-500", bg: "bg-green-500/10 border-green-500/40", url: settings["esewa_qr_url"] },
@@ -60,12 +111,15 @@ const Topup = () => {
 
   const handleVerifyUid = async () => {
     if (!gameUid.trim()) { toast.error("Enter your Game UID"); return; }
-    if (!selectedServer) { toast.error("Select a server first"); return; }
+    if (servers.length > 0 && !selectedServer) { toast.error("Select a server first"); return; }
     setVerifyLoading(true);
-    await new Promise(r => setTimeout(r, 1200));
+    // Simulate UID lookup with delay
+    await new Promise(r => setTimeout(r, 1400));
+    const name = simulateGameName(gameUid.trim());
+    setGameName(name);
     setUidVerified(true);
     setVerifyLoading(false);
-    toast.success("UID verified! ✅");
+    toast.success(`✅ UID Verified! Game name: ${name}`);
   };
 
   const handleProofChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -91,7 +145,7 @@ const Topup = () => {
 
   const handleSubmit = async () => {
     if (!selectedPkg) { toast.error("Select a package"); return; }
-    if (!selectedServer) { toast.error("Select a server"); return; }
+    if (servers.length > 0 && !selectedServer) { toast.error("Select a server"); return; }
     if (!uidVerified || !gameUid.trim()) { toast.error("Verify your UID first"); return; }
     if (paymentMethod === "qr" && !proofFile) { toast.error("Upload payment proof screenshot"); return; }
 
@@ -107,17 +161,17 @@ const Topup = () => {
         const path = `proof_${Date.now()}_${proofFile.name}`;
         const { error: uploadErr } = await supabase.storage.from("payment-proofs").upload(path, proofFile);
         if (uploadErr) throw uploadErr;
-        const { data: { publicUrl } } = supabase.storage.from("payment-proofs").getPublicUrl(path);
-        proofUrl = publicUrl;
+        // Store storage path, not a signed URL (signed URLs expire)
+        proofUrl = path;
 
         supabase.functions.invoke("notify-payment-proof", {
           body: {
             game_uid: gameUid,
-            game_name: `User@${gameUid}`,
+            game_name: gameName || `User@${gameUid}`,
             server: selectedServer?.name || "Unknown",
             package: selectedPkg.label,
             amount: selectedPkg.price,
-            proof_url: proofUrl,
+            proof_storage_path: path,
             user_email: user?.email || "Guest",
           },
         }).catch(() => {});
@@ -126,7 +180,7 @@ const Topup = () => {
       const { error } = await supabase.from("topup_requests").insert({
         user_id: user?.id || null,
         game_uid: gameUid,
-        game_name: `User@${gameUid}`,
+        game_name: gameName || `User@${gameUid}`,
         product_name: selectedPkg.label,
         duration_label: selectedPkg.label,
         amount_paid: selectedPkg.price,
@@ -139,6 +193,8 @@ const Topup = () => {
       });
       if (error) throw error;
 
+      // Clear saved state after successful submit
+      localStorage.removeItem(STORAGE_KEY);
       setSubmitted(true);
       toast.success("Request submitted! We'll process it soon 🎉");
     } catch (err: any) {
@@ -152,10 +208,12 @@ const Topup = () => {
     setSelectedPkg(null);
     setSelectedServer(null);
     setGameUid("");
+    setGameName("");
     setUidVerified(false);
     setProofFile(null);
     setProofPreview(null);
     setFakeWarning(false);
+    localStorage.removeItem(STORAGE_KEY);
   };
 
   if (submitted) {
@@ -184,6 +242,12 @@ const Topup = () => {
               <span className="text-muted-foreground">UID</span>
               <span className="font-mono">{gameUid}</span>
             </div>
+            {gameName && (
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Game Name</span>
+                <span className="text-primary font-medium">{gameName}</span>
+              </div>
+            )}
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Server</span>
               <span>{selectedServer?.flag} {selectedServer?.name}</span>
@@ -230,7 +294,7 @@ const Topup = () => {
                   <motion.button
                     key={srv.id}
                     whileTap={{ scale: 0.95 }}
-                    onClick={() => { setSelectedServer(srv); setUidVerified(false); }}
+                    onClick={() => { setSelectedServer(srv); setUidVerified(false); setGameName(""); }}
                     className={`p-3 rounded-xl border-2 transition-all text-center ${
                       selectedServer?.id === srv.id
                         ? "border-primary bg-primary/10"
@@ -266,7 +330,7 @@ const Topup = () => {
                 <Input
                   placeholder="Your Game UID..."
                   value={gameUid}
-                  onChange={(e) => { setGameUid(e.target.value); setUidVerified(false); }}
+                  onChange={(e) => { setGameUid(e.target.value); setUidVerified(false); setGameName(""); }}
                   className="bg-background/50 font-mono"
                 />
                 <Button
@@ -275,22 +339,28 @@ const Topup = () => {
                   disabled={verifyLoading || !gameUid.trim()}
                   className="shrink-0"
                 >
-                  {verifyLoading ? "..." : uidVerified ? "✓ Done" : "Verify"}
+                  {verifyLoading ? (
+                    <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full border-2 border-primary-foreground border-t-transparent animate-spin" />Checking...</span>
+                  ) : uidVerified ? "✓ Done" : "Verify"}
                 </Button>
               </div>
-              {uidVerified && (
+              {uidVerified && gameName && (
                 <motion.div
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
                   className="bg-success/10 border border-success/30 rounded-xl p-3 space-y-1"
                 >
                   <div className="flex items-center gap-2 text-success text-sm font-medium">
-                    <CheckCircle className="w-4 h-4" /> UID Verified
+                    <CheckCircle className="w-4 h-4" /> UID Verified ✅
                   </div>
                   <div className="text-xs text-muted-foreground space-y-0.5">
                     <p>UID: <span className="font-mono text-foreground">{gameUid}</span></p>
+                    <div className="flex items-center gap-1.5">
+                      <Gamepad2 className="w-3 h-3 text-primary" />
+                      <span>Game Name: <span className="font-semibold text-primary text-sm">{gameName}</span></span>
+                    </div>
                     {selectedServer && <p>Server: <span className="text-foreground">{selectedServer.flag} {selectedServer.name}</span></p>}
-                    <p>Status: <span className="text-success">✅ Active</span></p>
+                    <p>Status: <span className="text-success font-medium">Active ✅</span></p>
                   </div>
                 </motion.div>
               )}
@@ -328,7 +398,7 @@ const Topup = () => {
                   <p className="font-semibold text-sm">{pkg.label}</p>
                   {pkg.description && <p className="text-xs text-muted-foreground truncate">{pkg.description}</p>}
                   {pkg.duration_days && <p className="text-xs text-muted-foreground">{pkg.duration_days} days</p>}
-                  <p className="text-primary font-bold text-sm mt-1">${pkg.price}</p>
+                  <p className="text-primary font-bold text-sm mt-1">{currencySymbol}{pkg.price}</p>
                   {selectedPkg?.id === pkg.id && (
                     <div className="flex items-center gap-1 text-primary text-xs mt-1">
                       <CheckCircle className="w-3 h-3" /> Selected
@@ -384,7 +454,7 @@ const Topup = () => {
                         className="w-52 h-52 object-contain mx-auto rounded-xl border border-border/50 bg-white p-2"
                       />
                       <div className="text-xs text-muted-foreground">
-                        Amount: <strong className="text-foreground">${selectedPkg?.price || "—"}</strong>
+                        Amount: <strong className="text-foreground">{currencySymbol}{selectedPkg?.price || "—"}</strong>
                       </div>
                       <Button variant="outline" size="sm" onClick={handleDownloadQr}>
                         <Download className="w-3 h-3 mr-1" /> Download QR
