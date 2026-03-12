@@ -1541,19 +1541,24 @@ const Admin = () => {
         </Dialog>
 
         {/* Proof View Dialog */}
-        <Dialog open={!!proofViewUrl} onOpenChange={() => setProofViewUrl(null)}>
+        <Dialog open={!!proofViewUrl || proofViewLoading} onOpenChange={() => { setProofViewUrl(null); setProofViewLoading(false); }}>
           <DialogContent className="bg-card/95 backdrop-blur-xl max-w-xl">
             <DialogHeader>
               <DialogTitle>Payment Proof</DialogTitle>
             </DialogHeader>
-            {proofViewUrl && (
+            {proofViewLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <span className="w-8 h-8 rounded-full border-4 border-primary border-t-transparent animate-spin" />
+                <span className="ml-3 text-muted-foreground text-sm">Loading image...</span>
+              </div>
+            ) : proofViewUrl ? (
               <div className="space-y-3">
-                <img src={proofViewUrl} alt="Payment proof" className="w-full max-h-96 object-contain rounded-lg" />
+                <img src={proofViewUrl} alt="Payment proof" className="w-full max-h-96 object-contain rounded-lg border border-border/50" />
                 <Button variant="outline" className="w-full" onClick={() => window.open(proofViewUrl, "_blank")}>
                   <ExternalLink className="w-4 h-4 mr-1" /> Open Full Image
                 </Button>
               </div>
-            )}
+            ) : null}
           </DialogContent>
         </Dialog>
       </div>
@@ -1562,4 +1567,5 @@ const Admin = () => {
 };
 
 export default Admin;
+
 
