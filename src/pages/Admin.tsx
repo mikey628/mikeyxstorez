@@ -52,6 +52,10 @@ const Admin = () => {
     esewa_qr_url: "",
     khalti_qr_url: "",
     bank_qr_url: "",
+    currency: "USD",
+    admin_can_view_proofs: "true",
+    admin_can_approve: "true",
+    admin_can_reject: "true",
   });
   const [qrUploading, setQrUploading] = useState<string | null>(null);
   const [pkgDialog, setPkgDialog] = useState(false);
@@ -59,6 +63,7 @@ const Admin = () => {
   const [pkgForm, setPkgForm] = useState({ label: "", price: 0, duration_days: 0, description: "" });
   const [pkgImageFile, setPkgImageFile] = useState<File | null>(null);
   const [proofViewUrl, setProofViewUrl] = useState<string | null>(null);
+  const [proofViewLoading, setProofViewLoading] = useState(false);
 
   // Server management
   const [serverDialog, setServerDialog] = useState(false);
