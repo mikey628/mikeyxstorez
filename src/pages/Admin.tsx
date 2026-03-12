@@ -1194,20 +1194,20 @@ const Admin = () => {
                               <span className="text-xs text-muted-foreground">{new Date(req.created_at).toLocaleDateString()}</span>
                             </div>
                             <p className="font-medium text-sm mt-1">
-                              UID: <span className="font-mono">{req.game_uid}</span>
-                              {req.game_name && req.game_name !== `User@${req.game_uid}` && (
-                                <span className="text-primary ml-1">· {req.game_name}</span>
-                              )}
-                            </p>
-                            <p className="text-xs text-muted-foreground">{req.duration_label} · ${req.amount_paid}</p>
-                            {req.server_name && <p className="text-xs text-muted-foreground">Server: {req.server_name}</p>}
-                            {userInfo && <p className="text-xs text-muted-foreground">User: {userInfo.email}</p>}
-                            {req.payment_method && <p className="text-xs text-muted-foreground">Payment: {req.payment_method.replace("qr_", "").toUpperCase()}</p>}
-                          </div>
-                          <div className="flex gap-1 shrink-0 flex-col">
-                            {req.payment_proof_url && (
-                              <Button variant="ghost" size="icon" title="View proof" onClick={() => setProofViewUrl(req.payment_proof_url)}>
-                                <Eye className="w-4 h-4" />
+                               UID: <span className="font-mono">{req.game_uid}</span>
+                               {req.game_name && req.game_name !== `User@${req.game_uid}` && (
+                                 <span className="text-primary ml-2 font-semibold">🎮 {req.game_name}</span>
+                               )}
+                             </p>
+                             <p className="text-xs text-muted-foreground">{req.duration_label} · {topupSettings.currency === "NPR" ? "Rs." : "$"}{req.amount_paid}</p>
+                             {req.server_name && <p className="text-xs text-muted-foreground">Server: {req.server_name}</p>}
+                             {userInfo && <p className="text-xs text-muted-foreground">User: {userInfo.email}</p>}
+                             {req.payment_method && <p className="text-xs text-muted-foreground">Payment: {req.payment_method.replace("qr_", "").toUpperCase()}</p>}
+                           </div>
+                           <div className="flex gap-1 shrink-0 flex-col">
+                             {req.payment_proof_url && topupSettings.admin_can_view_proofs === "true" && (
+                               <Button variant="ghost" size="icon" title="View proof" onClick={() => viewProof(req.payment_proof_url)}>
+                                 {proofViewLoading ? <span className="w-4 h-4 rounded-full border-2 border-primary border-t-transparent animate-spin" /> : <Eye className="w-4 h-4" />}
                               </Button>
                             )}
                             {req.status === "pending" && (
