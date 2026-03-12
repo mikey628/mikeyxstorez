@@ -85,7 +85,16 @@ const Profile = () => {
   return (
     <DashboardLayout>
       <div className="space-y-6 max-w-lg mx-auto">
-        <h1 className="text-2xl font-bold">{t("profile")}</h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold">{t("profile")}</h1>
+          {isTopupAdmin && (
+            <Link to="/topup-admin">
+              <Button size="sm" className="gap-2">
+                <Shield className="w-4 h-4" /> Topup Admin Panel
+              </Button>
+            </Link>
+          )}
+        </div>
 
         <Tabs defaultValue="account">
           <TabsList className="w-full">
