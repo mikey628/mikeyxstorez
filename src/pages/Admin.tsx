@@ -16,6 +16,7 @@ import {
   Coins, Download, Ban, Shield, CheckCircle, XCircle, Upload,
   LogOut, Link as LinkIcon, Globe, Clock, Power, AlertTriangle, RotateCcw,
   Tag, Gift, Image, Video, QrCode, CreditCard, Eye, ExternalLink, Server, UserPlus, Bell,
+  Gamepad2, MessageCircle, Send,
 } from "lucide-react";
 import { Navigate } from "react-router-dom";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
@@ -72,9 +73,25 @@ const Admin = () => {
   const [serverLogoFile, setServerLogoFile] = useState<File | null>(null);
   const [serverUploading, setServerUploading] = useState(false);
 
+  // Topup games management
+  const [topupGames, setTopupGames] = useState<any[]>([]);
+  const [gameDialog, setGameDialog] = useState(false);
+  const [editGame, setEditGame] = useState<any>(null);
+  const [gameForm, setGameForm] = useState({ name: "", emoji: "🎮" });
+  const [gameImageFile, setGameImageFile] = useState<File | null>(null);
+  const [gameUploading, setGameUploading] = useState(false);
+
   // Topup admin management
   const [topupAdminDialog, setTopupAdminDialog] = useState(false);
   const [topupAdminEmail, setTopupAdminEmail] = useState("");
+
+  // Chat management
+  const [chatSessions, setChatSessions] = useState<any[]>([]);
+  const [chatMessages, setChatMessages] = useState<Record<string, any[]>>({});
+  const [activeChatSession, setActiveChatSession] = useState<string | null>(null);
+  const [chatReply, setChatReply] = useState("");
+  const [chatSettings, setChatSettings] = useState({ welcome: "Welcome! 👋 How can we help you today?", response_time: "5-15 minutes", enabled: "true" });
+  const [unreadChats, setUnreadChats] = useState(0);
 
   // Product dialog
   const [productDialog, setProductDialog] = useState(false);
@@ -129,6 +146,11 @@ const Admin = () => {
     const { data: topupPkgs } = await supabase.from("topup_packages").select("*").order("sort_order");
     const { data: srvs } = await supabase.from("topup_servers").select("*").order("sort_order");
     const { data: tadmins } = await supabase.from("topup_admins").select("*").order("created_at", { ascending: false });
+    const { data: gms } = await supabase.from("topup_games").select("*").order("sort_order");
+    const { data: sessions } = await supabase.from("chat_sessions").select("*").order("updated_at", { ascending: false });
+    setTopupGames(gms || []);
+    setChatSessions(sessions || []);
+    setUnreadChats((sessions || []).filter((s: any) => s.status === "open").length);
 
     setProducts(prods || []);
     setTransactions(txns || []);
@@ -152,6 +174,7 @@ const Admin = () => {
       currency: "USD",
       admin_can_view_proofs: "true", admin_can_approve: "true", admin_can_reject: "true",
     };
+    const chatSet = { welcome: "Welcome! 👋 How can we help you today?", response_time: "5-15 minutes", enabled: "true" };
     (settings || []).forEach((s: any) => {
       if (s.key === "maintenance_mode") mMode = s.value === "true";
       else if (s.key === "require_approval") reqApproval = s.value !== "false";
@@ -166,12 +189,16 @@ const Admin = () => {
       else if (s.key === "topup_admin_can_view_proofs") ts.admin_can_view_proofs = s.value || "true";
       else if (s.key === "topup_admin_can_approve") ts.admin_can_approve = s.value || "true";
       else if (s.key === "topup_admin_can_reject") ts.admin_can_reject = s.value || "true";
+      else if (s.key === "chat_welcome_message") chatSet.welcome = s.value || chatSet.welcome;
+      else if (s.key === "chat_response_time") chatSet.response_time = s.value || chatSet.response_time;
+      else if (s.key === "chat_enabled") chatSet.enabled = s.value || "true";
       else links[s.key] = s.value || "";
     });
     setSocialLinks(links);
     setMaintenanceMode(mMode);
     setRequireApproval(reqApproval);
     setTopupSettings(ts);
+    setChatSettings(chatSet);
 
     const totalSales = (txns || []).filter((t: any) => t.type === "purchase").length;
     const totalPoints = (allUsers || []).reduce((s: number, u: any) => s + (u.wallet_points || 0), 0);
@@ -469,9 +496,66 @@ const Admin = () => {
     }
     setPkgDialog(false);
     setEditPkg(null);
-    setPkgForm({ label: "", price: 0, duration_days: 0, description: "" });
+    setPkgForm({ label: "", price: 0, duration_days: 0, description: "", game_id: "", diamonds: 0, emoji: "💎" } as any);
     setPkgImageFile(null);
     fetchAll();
+  };
+
+  const saveTopupGame = async () => {
+    if (!gameForm.name) { toast.error("Enter game name"); return; }
+    setGameUploading(true);
+    let imageUrl: string | undefined = editGame?.image_url;
+    if (gameImageFile) {
+      const path = `game_${Date.now()}_${gameImageFile.name}`;
+      const { error: upErr } = await supabase.storage.from("logo-media").upload(path, gameImageFile, { upsert: true });
+      if (!upErr) {
+        const { data: { publicUrl } } = supabase.storage.from("logo-media").getPublicUrl(path);
+        imageUrl = publicUrl;
+      }
+    }
+    const payload = { name: gameForm.name, emoji: gameForm.emoji, image_url: imageUrl };
+    if (editGame) {
+      await supabase.from("topup_games").update(payload).eq("id", editGame.id);
+      toast.success("Game updated");
+    } else {
+      await supabase.from("topup_games").insert(payload);
+      toast.success("Game added");
+    }
+    setGameDialog(false);
+    setEditGame(null);
+    setGameForm({ name: "", emoji: "🎮" });
+    setGameImageFile(null);
+    setGameUploading(false);
+    fetchAll();
+  };
+
+  const saveChatSettings = async () => {
+    const updates = [
+      { key: "chat_welcome_message", value: chatSettings.welcome },
+      { key: "chat_response_time", value: chatSettings.response_time },
+      { key: "chat_enabled", value: chatSettings.enabled },
+    ];
+    for (const u of updates) {
+      await supabase.from("site_settings").update({ value: u.value }).eq("key", u.key);
+    }
+    toast.success("Chat settings saved!");
+  };
+
+  const loadChatMessages = async (sessionId: string) => {
+    setActiveChatSession(sessionId);
+    const { data } = await supabase.from("chat_messages").select("*").eq("session_id", sessionId).order("created_at");
+    setChatMessages(prev => ({ ...prev, [sessionId]: data || [] }));
+  };
+
+  const sendAdminReply = async () => {
+    if (!chatReply.trim() || !activeChatSession) return;
+    await supabase.from("chat_messages").insert({
+      session_id: activeChatSession,
+      sender_role: "admin",
+      content: chatReply.trim(),
+    });
+    setChatReply("");
+    loadChatMessages(activeChatSession);
   };
 
   const saveServer = async () => {
@@ -687,6 +771,14 @@ const Admin = () => {
               {pendingNotifCount > 0 && (
                 <span className="ml-1.5 inline-flex items-center justify-center w-4 h-4 text-[10px] font-bold bg-destructive text-destructive-foreground rounded-full">
                   {pendingNotifCount > 9 ? "9+" : pendingNotifCount}
+                </span>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="chat" className="relative">
+              Chat
+              {unreadChats > 0 && (
+                <span className="ml-1.5 inline-flex items-center justify-center w-4 h-4 text-[10px] font-bold bg-primary text-primary-foreground rounded-full">
+                  {unreadChats > 9 ? "9+" : unreadChats}
                 </span>
               )}
             </TabsTrigger>
@@ -1099,6 +1191,36 @@ const Admin = () => {
               </CardContent>
             </Card>
 
+            {/* Games Management */}
+            <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
+              <CardContent className="p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-semibold flex items-center gap-2"><Gamepad2 className="w-4 h-4 text-primary" /> Games</h3>
+                  <Button size="sm" onClick={() => { setEditGame(null); setGameForm({ name: "", emoji: "🎮" }); setGameImageFile(null); setGameDialog(true); }}>
+                    <Plus className="w-4 h-4 mr-1" /> Add Game
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">Add game titles — packages will be grouped under each game.</p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {topupGames.map((game) => (
+                    <div key={game.id} className="p-3 rounded-lg bg-background/50 border border-border/30 text-center relative group">
+                      {game.image_url
+                        ? <img src={game.image_url} alt={game.name} className="w-10 h-10 object-contain mx-auto mb-1 rounded-lg" />
+                        : <span className="text-3xl block mb-1">{game.emoji || "🎮"}</span>}
+                      <p className="text-xs font-medium truncate">{game.name}</p>
+                      <div className="absolute top-1 right-1 gap-0.5 hidden group-hover:flex">
+                        <button onClick={() => { setEditGame(game); setGameForm({ name: game.name, emoji: game.emoji || "🎮" }); setGameImageFile(null); setGameDialog(true); }}
+                          className="p-0.5 rounded bg-card/80 text-muted-foreground hover:text-foreground"><Edit className="w-3 h-3" /></button>
+                        <button onClick={async () => { await supabase.from("topup_games").delete().eq("id", game.id); fetchAll(); }}
+                          className="p-0.5 rounded bg-card/80 text-muted-foreground hover:text-destructive"><Trash2 className="w-3 h-3" /></button>
+                      </div>
+                    </div>
+                  ))}
+                  {topupGames.length === 0 && <p className="col-span-3 text-center text-muted-foreground text-xs py-3">No games yet.</p>}
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Servers Management */}
             <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
               <CardContent className="p-4 space-y-3">
@@ -1260,6 +1382,78 @@ const Admin = () => {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* CHAT TAB */}
+          <TabsContent value="chat" className="space-y-4">
+            {/* Chat Settings */}
+            <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
+              <CardContent className="p-4 space-y-3">
+                <h3 className="font-semibold flex items-center gap-2"><MessageCircle className="w-4 h-4 text-primary" /> Live Chat Settings</h3>
+                <div className="space-y-2">
+                  <label className="text-xs text-muted-foreground">Welcome Message</label>
+                  <Input value={chatSettings.welcome} onChange={(e) => setChatSettings(s => ({ ...s, welcome: e.target.value }))} className="bg-background/50" />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs text-muted-foreground">Response Time (shown to users)</label>
+                  <Input value={chatSettings.response_time} onChange={(e) => setChatSettings(s => ({ ...s, response_time: e.target.value }))} className="bg-background/50" placeholder="e.g. 5-15 minutes" />
+                </div>
+                <div className="flex items-center justify-between py-2 border-t border-border/30">
+                  <div>
+                    <p className="text-sm font-medium">Live Chat {chatSettings.enabled === "true" ? "🟢 Enabled" : "🔴 Disabled"}</p>
+                    <p className="text-xs text-muted-foreground">Toggle chat widget for all users</p>
+                  </div>
+                  <Button size="sm" variant={chatSettings.enabled === "true" ? "default" : "outline"}
+                    onClick={() => setChatSettings(s => ({ ...s, enabled: s.enabled === "true" ? "false" : "true" }))}>
+                    {chatSettings.enabled === "true" ? "Disable" : "Enable"}
+                  </Button>
+                </div>
+                <Button onClick={saveChatSettings}><CheckCircle className="w-4 h-4 mr-1" /> Save Settings</Button>
+              </CardContent>
+            </Card>
+
+            {/* Chat Sessions */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
+                <CardContent className="p-4 space-y-2">
+                  <h3 className="font-semibold text-sm">Conversations ({chatSessions.length})</h3>
+                  <div className="space-y-1 max-h-80 overflow-y-auto">
+                    {chatSessions.map((session) => (
+                      <button key={session.id} onClick={() => loadChatMessages(session.id)}
+                        className={`w-full text-left p-3 rounded-lg border transition-all ${activeChatSession === session.id ? "border-primary bg-primary/10" : "border-border/30 bg-background/50 hover:border-primary/40"}`}>
+                        <p className="text-sm font-medium truncate">{session.user_email}</p>
+                        <p className="text-xs text-muted-foreground">{new Date(session.created_at).toLocaleDateString()}</p>
+                      </button>
+                    ))}
+                    {chatSessions.length === 0 && <p className="text-center text-muted-foreground text-xs py-4">No chats yet.</p>}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {activeChatSession && (
+                <Card className="border-border/50 bg-card/50 backdrop-blur-sm flex flex-col" style={{ maxHeight: "400px" }}>
+                  <CardContent className="p-3 flex flex-col h-full gap-2">
+                    <h3 className="font-semibold text-sm shrink-0">Reply</h3>
+                    <div className="flex-1 overflow-y-auto space-y-2 min-h-0">
+                      {(chatMessages[activeChatSession] || []).map((msg) => (
+                        <div key={msg.id} className={`flex gap-2 ${msg.sender_role === "admin" ? "flex-row-reverse" : ""}`}>
+                          <div className={`rounded-xl px-3 py-2 max-w-[80%] text-sm ${msg.sender_role === "admin" ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
+                            {msg.content}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex gap-2 shrink-0">
+                      <Input value={chatReply} onChange={(e) => setChatReply(e.target.value)} placeholder="Type reply..." className="text-sm h-9"
+                        onKeyDown={(e) => e.key === "Enter" && sendAdminReply()} />
+                      <Button size="icon" className="h-9 w-9 shrink-0" onClick={sendAdminReply} disabled={!chatReply.trim()}>
+                        <Send className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
           </TabsContent>
 
         </Tabs>
@@ -1465,14 +1659,32 @@ const Admin = () => {
 
         {/* Topup Package Dialog */}
         <Dialog open={pkgDialog} onOpenChange={setPkgDialog}>
-          <DialogContent className="bg-card/95 backdrop-blur-xl">
+          <DialogContent className="bg-card/95 backdrop-blur-xl max-h-[80vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{editPkg ? "Edit Package" : "Add Package"}</DialogTitle>
             </DialogHeader>
             <div className="space-y-3">
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Game (optional)</label>
+                <select className="w-full h-10 rounded-md border border-input bg-background/50 px-3 text-sm"
+                  value={(pkgForm as any).game_id || ""} onChange={(e) => setPkgForm({ ...pkgForm, game_id: e.target.value } as any)}>
+                  <option value="">— No specific game —</option>
+                  {topupGames.map(g => <option key={g.id} value={g.id}>{g.emoji} {g.name}</option>)}
+                </select>
+              </div>
               <Input placeholder="Label (e.g. Weekly Lite)" value={pkgForm.label} onChange={(e) => setPkgForm({ ...pkgForm, label: e.target.value })} className="bg-background/50" />
               <Input placeholder="Description (optional)" value={pkgForm.description} onChange={(e) => setPkgForm({ ...pkgForm, description: e.target.value })} className="bg-background/50" />
-              <Input type="number" placeholder="Price ($)" value={pkgForm.price} onChange={(e) => setPkgForm({ ...pkgForm, price: Number(e.target.value) })} className="bg-background/50" />
+              <Input type="number" placeholder="Price (NPR/USD)" value={pkgForm.price} onChange={(e) => setPkgForm({ ...pkgForm, price: Number(e.target.value) })} className="bg-background/50" />
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Emoji (e.g. 💎)</label>
+                  <Input placeholder="💎" value={(pkgForm as any).emoji || "💎"} onChange={(e) => setPkgForm({ ...pkgForm, emoji: e.target.value } as any)} className="bg-background/50 text-lg" />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Diamonds / Amount</label>
+                  <Input type="number" placeholder="100" value={(pkgForm as any).diamonds || ""} onChange={(e) => setPkgForm({ ...pkgForm, diamonds: Number(e.target.value) } as any)} className="bg-background/50" />
+                </div>
+              </div>
               <Input type="number" placeholder="Duration (days)" value={pkgForm.duration_days} onChange={(e) => setPkgForm({ ...pkgForm, duration_days: Number(e.target.value) })} className="bg-background/50" />
               <div>
                 <label className="text-xs text-muted-foreground mb-1 block">Product Image (optional)</label>
@@ -1490,6 +1702,35 @@ const Admin = () => {
             <DialogFooter>
               <Button variant="outline" onClick={() => setPkgDialog(false)}>Cancel</Button>
               <Button onClick={saveTopupPackage}>Save</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Game Dialog */}
+        <Dialog open={gameDialog} onOpenChange={setGameDialog}>
+          <DialogContent className="bg-card/95 backdrop-blur-xl">
+            <DialogHeader>
+              <DialogTitle>{editGame ? "Edit Game" : "Add Game"}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              <Input placeholder="Game Name (e.g. Free Fire)" value={gameForm.name} onChange={(e) => setGameForm({ ...gameForm, name: e.target.value })} className="bg-background/50" />
+              <Input placeholder="Emoji (e.g. 🔫)" value={gameForm.emoji} onChange={(e) => setGameForm({ ...gameForm, emoji: e.target.value })} className="bg-background/50 text-lg" />
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Game Image (optional, replaces emoji)</label>
+                <div className="flex items-center gap-2">
+                  {(gameImageFile ? URL.createObjectURL(gameImageFile) : editGame?.image_url) && (
+                    <img src={gameImageFile ? URL.createObjectURL(gameImageFile) : editGame?.image_url} alt="game" className="w-10 h-10 object-contain rounded-lg" />
+                  )}
+                  <Button variant="outline" size="sm" onClick={() => document.getElementById("game-img-input")?.click()}>
+                    <Upload className="w-3 h-3 mr-1" /> Upload Image
+                  </Button>
+                  <input id="game-img-input" type="file" accept="image/*" className="hidden" onChange={(e) => setGameImageFile(e.target.files?.[0] || null)} />
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setGameDialog(false)}>Cancel</Button>
+              <Button onClick={saveTopupGame} disabled={gameUploading}>{gameUploading ? "Saving..." : "Save"}</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

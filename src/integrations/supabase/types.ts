@@ -14,6 +14,68 @@ export type Database = {
   }
   public: {
     Tables: {
+      chat_messages: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          sender_id: string | null
+          sender_role: string
+          session_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          sender_id?: string | null
+          sender_role?: string
+          session_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          sender_id?: string | null
+          sender_role?: string
+          session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_messages_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "chat_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_sessions: {
+        Row: {
+          created_at: string
+          id: string
+          status: string
+          updated_at: string
+          user_email: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          status?: string
+          updated_at?: string
+          user_email: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          status?: string
+          updated_at?: string
+          user_email?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       keys: {
         Row: {
           created_at: string
@@ -232,11 +294,44 @@ export type Database = {
         }
         Relationships: []
       }
+      topup_games: {
+        Row: {
+          created_at: string
+          emoji: string | null
+          id: string
+          image_url: string | null
+          is_active: boolean
+          name: string
+          sort_order: number | null
+        }
+        Insert: {
+          created_at?: string
+          emoji?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          name: string
+          sort_order?: number | null
+        }
+        Update: {
+          created_at?: string
+          emoji?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          name?: string
+          sort_order?: number | null
+        }
+        Relationships: []
+      }
       topup_packages: {
         Row: {
           created_at: string
           description: string | null
+          diamonds: number | null
           duration_days: number | null
+          emoji: string | null
+          game_id: string | null
           id: string
           image_url: string | null
           is_active: boolean
@@ -248,7 +343,10 @@ export type Database = {
         Insert: {
           created_at?: string
           description?: string | null
+          diamonds?: number | null
           duration_days?: number | null
+          emoji?: string | null
+          game_id?: string | null
           id?: string
           image_url?: string | null
           is_active?: boolean
@@ -260,7 +358,10 @@ export type Database = {
         Update: {
           created_at?: string
           description?: string | null
+          diamonds?: number | null
           duration_days?: number | null
+          emoji?: string | null
+          game_id?: string | null
           id?: string
           image_url?: string | null
           is_active?: boolean
@@ -269,7 +370,15 @@ export type Database = {
           sort_order?: number | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "topup_packages_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "topup_games"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       topup_requests: {
         Row: {
