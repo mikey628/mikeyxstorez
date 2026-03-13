@@ -37,16 +37,18 @@ const Auth = () => {
       if (error) {
         toast.error(error.message);
       } else if (signInData.user) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("is_approved, is_banned")
-          .eq("user_id", signInData.user.id)
-          .single();
+        // Fetch profile and approval setting in parallel
+        const [{ data: profile }, { data: approvalSetting }] = await Promise.all([
+          supabase.from("profiles").select("is_approved, is_banned").eq("user_id", signInData.user.id).single(),
+          supabase.from("site_settings").select("value").eq("key", "require_approval").maybeSingle(),
+        ]);
+
+        const requireApproval = approvalSetting?.value !== "false";
 
         if (profile?.is_banned) {
           await supabase.auth.signOut();
           toast.error("Your account has been banned.");
-        } else if (!profile?.is_approved) {
+        } else if (requireApproval && !profile?.is_approved) {
           await supabase.auth.signOut();
           toast.error("Your account is pending approval. Please wait for admin to approve your login.");
         } else {
@@ -55,6 +57,11 @@ const Auth = () => {
         }
       }
     } else {
+      // Fetch approval setting before signup
+      const { data: approvalSetting } = await supabase
+        .from("site_settings").select("value").eq("key", "require_approval").maybeSingle();
+      const requireApproval = approvalSetting?.value !== "false";
+
       const { error } = await supabase.auth.signUp({
         email,
         password,
@@ -65,7 +72,11 @@ const Auth = () => {
       if (error) {
         toast.error(error.message);
       } else {
-        toast.success("Account created! Please wait for admin approval before logging in.");
+        if (requireApproval) {
+          toast.success("Account created! Please wait for admin approval before logging in.");
+        } else {
+          toast.success("Account created! You can now sign in.");
+        }
         setIsLogin(true);
       }
     }
