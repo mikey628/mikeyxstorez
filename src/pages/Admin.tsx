@@ -495,9 +495,66 @@ const Admin = () => {
     }
     setPkgDialog(false);
     setEditPkg(null);
-    setPkgForm({ label: "", price: 0, duration_days: 0, description: "" });
+    setPkgForm({ label: "", price: 0, duration_days: 0, description: "", game_id: "", diamonds: 0, emoji: "💎" } as any);
     setPkgImageFile(null);
     fetchAll();
+  };
+
+  const saveTopupGame = async () => {
+    if (!gameForm.name) { toast.error("Enter game name"); return; }
+    setGameUploading(true);
+    let imageUrl: string | undefined = editGame?.image_url;
+    if (gameImageFile) {
+      const path = `game_${Date.now()}_${gameImageFile.name}`;
+      const { error: upErr } = await supabase.storage.from("logo-media").upload(path, gameImageFile, { upsert: true });
+      if (!upErr) {
+        const { data: { publicUrl } } = supabase.storage.from("logo-media").getPublicUrl(path);
+        imageUrl = publicUrl;
+      }
+    }
+    const payload = { name: gameForm.name, emoji: gameForm.emoji, image_url: imageUrl };
+    if (editGame) {
+      await supabase.from("topup_games").update(payload).eq("id", editGame.id);
+      toast.success("Game updated");
+    } else {
+      await supabase.from("topup_games").insert(payload);
+      toast.success("Game added");
+    }
+    setGameDialog(false);
+    setEditGame(null);
+    setGameForm({ name: "", emoji: "🎮" });
+    setGameImageFile(null);
+    setGameUploading(false);
+    fetchAll();
+  };
+
+  const saveChatSettings = async () => {
+    const updates = [
+      { key: "chat_welcome_message", value: chatSettings.welcome },
+      { key: "chat_response_time", value: chatSettings.response_time },
+      { key: "chat_enabled", value: chatSettings.enabled },
+    ];
+    for (const u of updates) {
+      await supabase.from("site_settings").update({ value: u.value }).eq("key", u.key);
+    }
+    toast.success("Chat settings saved!");
+  };
+
+  const loadChatMessages = async (sessionId: string) => {
+    setActiveChatSession(sessionId);
+    const { data } = await supabase.from("chat_messages").select("*").eq("session_id", sessionId).order("created_at");
+    setChatMessages(prev => ({ ...prev, [sessionId]: data || [] }));
+  };
+
+  const sendAdminReply = async () => {
+    if (!chatReply.trim() || !activeChatSession) return;
+    await supabase.from("chat_messages").insert({
+      session_id: activeChatSession,
+      sender_role: "admin",
+      content: chatReply.trim(),
+    });
+    setChatReply("");
+    loadChatMessages(activeChatSession);
   };
 
   const saveServer = async () => {
