@@ -1190,6 +1190,36 @@ const Admin = () => {
               </CardContent>
             </Card>
 
+            {/* Games Management */}
+            <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
+              <CardContent className="p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-semibold flex items-center gap-2"><Gamepad2 className="w-4 h-4 text-primary" /> Games</h3>
+                  <Button size="sm" onClick={() => { setEditGame(null); setGameForm({ name: "", emoji: "🎮" }); setGameImageFile(null); setGameDialog(true); }}>
+                    <Plus className="w-4 h-4 mr-1" /> Add Game
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">Add game titles — packages will be grouped under each game.</p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {topupGames.map((game) => (
+                    <div key={game.id} className="p-3 rounded-lg bg-background/50 border border-border/30 text-center relative group">
+                      {game.image_url
+                        ? <img src={game.image_url} alt={game.name} className="w-10 h-10 object-contain mx-auto mb-1 rounded-lg" />
+                        : <span className="text-3xl block mb-1">{game.emoji || "🎮"}</span>}
+                      <p className="text-xs font-medium truncate">{game.name}</p>
+                      <div className="absolute top-1 right-1 gap-0.5 hidden group-hover:flex">
+                        <button onClick={() => { setEditGame(game); setGameForm({ name: game.name, emoji: game.emoji || "🎮" }); setGameImageFile(null); setGameDialog(true); }}
+                          className="p-0.5 rounded bg-card/80 text-muted-foreground hover:text-foreground"><Edit className="w-3 h-3" /></button>
+                        <button onClick={async () => { await supabase.from("topup_games").delete().eq("id", game.id); fetchAll(); }}
+                          className="p-0.5 rounded bg-card/80 text-muted-foreground hover:text-destructive"><Trash2 className="w-3 h-3" /></button>
+                      </div>
+                    </div>
+                  ))}
+                  {topupGames.length === 0 && <p className="col-span-3 text-center text-muted-foreground text-xs py-3">No games yet.</p>}
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Servers Management */}
             <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
               <CardContent className="p-4 space-y-3">
