@@ -1659,14 +1659,32 @@ const Admin = () => {
 
         {/* Topup Package Dialog */}
         <Dialog open={pkgDialog} onOpenChange={setPkgDialog}>
-          <DialogContent className="bg-card/95 backdrop-blur-xl">
+          <DialogContent className="bg-card/95 backdrop-blur-xl max-h-[80vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{editPkg ? "Edit Package" : "Add Package"}</DialogTitle>
             </DialogHeader>
             <div className="space-y-3">
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Game (optional)</label>
+                <select className="w-full h-10 rounded-md border border-input bg-background/50 px-3 text-sm"
+                  value={(pkgForm as any).game_id || ""} onChange={(e) => setPkgForm({ ...pkgForm, game_id: e.target.value } as any)}>
+                  <option value="">— No specific game —</option>
+                  {topupGames.map(g => <option key={g.id} value={g.id}>{g.emoji} {g.name}</option>)}
+                </select>
+              </div>
               <Input placeholder="Label (e.g. Weekly Lite)" value={pkgForm.label} onChange={(e) => setPkgForm({ ...pkgForm, label: e.target.value })} className="bg-background/50" />
               <Input placeholder="Description (optional)" value={pkgForm.description} onChange={(e) => setPkgForm({ ...pkgForm, description: e.target.value })} className="bg-background/50" />
-              <Input type="number" placeholder="Price ($)" value={pkgForm.price} onChange={(e) => setPkgForm({ ...pkgForm, price: Number(e.target.value) })} className="bg-background/50" />
+              <Input type="number" placeholder="Price (NPR/USD)" value={pkgForm.price} onChange={(e) => setPkgForm({ ...pkgForm, price: Number(e.target.value) })} className="bg-background/50" />
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Emoji (e.g. 💎)</label>
+                  <Input placeholder="💎" value={(pkgForm as any).emoji || "💎"} onChange={(e) => setPkgForm({ ...pkgForm, emoji: e.target.value } as any)} className="bg-background/50 text-lg" />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Diamonds / Amount</label>
+                  <Input type="number" placeholder="100" value={(pkgForm as any).diamonds || ""} onChange={(e) => setPkgForm({ ...pkgForm, diamonds: Number(e.target.value) } as any)} className="bg-background/50" />
+                </div>
+              </div>
               <Input type="number" placeholder="Duration (days)" value={pkgForm.duration_days} onChange={(e) => setPkgForm({ ...pkgForm, duration_days: Number(e.target.value) })} className="bg-background/50" />
               <div>
                 <label className="text-xs text-muted-foreground mb-1 block">Product Image (optional)</label>
@@ -1684,6 +1702,35 @@ const Admin = () => {
             <DialogFooter>
               <Button variant="outline" onClick={() => setPkgDialog(false)}>Cancel</Button>
               <Button onClick={saveTopupPackage}>Save</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Game Dialog */}
+        <Dialog open={gameDialog} onOpenChange={setGameDialog}>
+          <DialogContent className="bg-card/95 backdrop-blur-xl">
+            <DialogHeader>
+              <DialogTitle>{editGame ? "Edit Game" : "Add Game"}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              <Input placeholder="Game Name (e.g. Free Fire)" value={gameForm.name} onChange={(e) => setGameForm({ ...gameForm, name: e.target.value })} className="bg-background/50" />
+              <Input placeholder="Emoji (e.g. 🔫)" value={gameForm.emoji} onChange={(e) => setGameForm({ ...gameForm, emoji: e.target.value })} className="bg-background/50 text-lg" />
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Game Image (optional, replaces emoji)</label>
+                <div className="flex items-center gap-2">
+                  {(gameImageFile ? URL.createObjectURL(gameImageFile) : editGame?.image_url) && (
+                    <img src={gameImageFile ? URL.createObjectURL(gameImageFile) : editGame?.image_url} alt="game" className="w-10 h-10 object-contain rounded-lg" />
+                  )}
+                  <Button variant="outline" size="sm" onClick={() => document.getElementById("game-img-input")?.click()}>
+                    <Upload className="w-3 h-3 mr-1" /> Upload Image
+                  </Button>
+                  <input id="game-img-input" type="file" accept="image/*" className="hidden" onChange={(e) => setGameImageFile(e.target.files?.[0] || null)} />
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setGameDialog(false)}>Cancel</Button>
+              <Button onClick={saveTopupGame} disabled={gameUploading}>{gameUploading ? "Saving..." : "Save"}</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
