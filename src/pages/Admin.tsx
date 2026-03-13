@@ -173,6 +173,7 @@ const Admin = () => {
       currency: "USD",
       admin_can_view_proofs: "true", admin_can_approve: "true", admin_can_reject: "true",
     };
+    const chatSet = { welcome: "Welcome! 👋 How can we help you today?", response_time: "5-15 minutes", enabled: "true" };
     (settings || []).forEach((s: any) => {
       if (s.key === "maintenance_mode") mMode = s.value === "true";
       else if (s.key === "require_approval") reqApproval = s.value !== "false";
@@ -187,12 +188,16 @@ const Admin = () => {
       else if (s.key === "topup_admin_can_view_proofs") ts.admin_can_view_proofs = s.value || "true";
       else if (s.key === "topup_admin_can_approve") ts.admin_can_approve = s.value || "true";
       else if (s.key === "topup_admin_can_reject") ts.admin_can_reject = s.value || "true";
+      else if (s.key === "chat_welcome_message") chatSet.welcome = s.value || chatSet.welcome;
+      else if (s.key === "chat_response_time") chatSet.response_time = s.value || chatSet.response_time;
+      else if (s.key === "chat_enabled") chatSet.enabled = s.value || "true";
       else links[s.key] = s.value || "";
     });
     setSocialLinks(links);
     setMaintenanceMode(mMode);
     setRequireApproval(reqApproval);
     setTopupSettings(ts);
+    setChatSettings(chatSet);
 
     const totalSales = (txns || []).filter((t: any) => t.type === "purchase").length;
     const totalPoints = (allUsers || []).reduce((s: number, u: any) => s + (u.wallet_points || 0), 0);
