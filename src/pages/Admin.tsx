@@ -145,6 +145,11 @@ const Admin = () => {
     const { data: topupPkgs } = await supabase.from("topup_packages").select("*").order("sort_order");
     const { data: srvs } = await supabase.from("topup_servers").select("*").order("sort_order");
     const { data: tadmins } = await supabase.from("topup_admins").select("*").order("created_at", { ascending: false });
+    const { data: gms } = await supabase.from("topup_games").select("*").order("sort_order");
+    const { data: sessions } = await supabase.from("chat_sessions").select("*").order("updated_at", { ascending: false });
+    setTopupGames(gms || []);
+    setChatSessions(sessions || []);
+    setUnreadChats((sessions || []).filter((s: any) => s.status === "open").length);
 
     setProducts(prods || []);
     setTransactions(txns || []);
