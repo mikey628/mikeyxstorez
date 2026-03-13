@@ -72,9 +72,25 @@ const Admin = () => {
   const [serverLogoFile, setServerLogoFile] = useState<File | null>(null);
   const [serverUploading, setServerUploading] = useState(false);
 
+  // Topup games management
+  const [topupGames, setTopupGames] = useState<any[]>([]);
+  const [gameDialog, setGameDialog] = useState(false);
+  const [editGame, setEditGame] = useState<any>(null);
+  const [gameForm, setGameForm] = useState({ name: "", emoji: "🎮" });
+  const [gameImageFile, setGameImageFile] = useState<File | null>(null);
+  const [gameUploading, setGameUploading] = useState(false);
+
   // Topup admin management
   const [topupAdminDialog, setTopupAdminDialog] = useState(false);
   const [topupAdminEmail, setTopupAdminEmail] = useState("");
+
+  // Chat management
+  const [chatSessions, setChatSessions] = useState<any[]>([]);
+  const [chatMessages, setChatMessages] = useState<Record<string, any[]>>({});
+  const [activeChatSession, setActiveChatSession] = useState<string | null>(null);
+  const [chatReply, setChatReply] = useState("");
+  const [chatSettings, setChatSettings] = useState({ welcome: "Welcome! 👋 How can we help you today?", response_time: "5-15 minutes", enabled: "true" });
+  const [unreadChats, setUnreadChats] = useState(0);
 
   // Product dialog
   const [productDialog, setProductDialog] = useState(false);
