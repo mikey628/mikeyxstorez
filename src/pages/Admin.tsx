@@ -1384,6 +1384,78 @@ const Admin = () => {
             </Card>
           </TabsContent>
 
+          {/* CHAT TAB */}
+          <TabsContent value="chat" className="space-y-4">
+            {/* Chat Settings */}
+            <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
+              <CardContent className="p-4 space-y-3">
+                <h3 className="font-semibold flex items-center gap-2"><MessageCircle className="w-4 h-4 text-primary" /> Live Chat Settings</h3>
+                <div className="space-y-2">
+                  <label className="text-xs text-muted-foreground">Welcome Message</label>
+                  <Input value={chatSettings.welcome} onChange={(e) => setChatSettings(s => ({ ...s, welcome: e.target.value }))} className="bg-background/50" />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs text-muted-foreground">Response Time (shown to users)</label>
+                  <Input value={chatSettings.response_time} onChange={(e) => setChatSettings(s => ({ ...s, response_time: e.target.value }))} className="bg-background/50" placeholder="e.g. 5-15 minutes" />
+                </div>
+                <div className="flex items-center justify-between py-2 border-t border-border/30">
+                  <div>
+                    <p className="text-sm font-medium">Live Chat {chatSettings.enabled === "true" ? "🟢 Enabled" : "🔴 Disabled"}</p>
+                    <p className="text-xs text-muted-foreground">Toggle chat widget for all users</p>
+                  </div>
+                  <Button size="sm" variant={chatSettings.enabled === "true" ? "default" : "outline"}
+                    onClick={() => setChatSettings(s => ({ ...s, enabled: s.enabled === "true" ? "false" : "true" }))}>
+                    {chatSettings.enabled === "true" ? "Disable" : "Enable"}
+                  </Button>
+                </div>
+                <Button onClick={saveChatSettings}><CheckCircle className="w-4 h-4 mr-1" /> Save Settings</Button>
+              </CardContent>
+            </Card>
+
+            {/* Chat Sessions */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
+                <CardContent className="p-4 space-y-2">
+                  <h3 className="font-semibold text-sm">Conversations ({chatSessions.length})</h3>
+                  <div className="space-y-1 max-h-80 overflow-y-auto">
+                    {chatSessions.map((session) => (
+                      <button key={session.id} onClick={() => loadChatMessages(session.id)}
+                        className={`w-full text-left p-3 rounded-lg border transition-all ${activeChatSession === session.id ? "border-primary bg-primary/10" : "border-border/30 bg-background/50 hover:border-primary/40"}`}>
+                        <p className="text-sm font-medium truncate">{session.user_email}</p>
+                        <p className="text-xs text-muted-foreground">{new Date(session.created_at).toLocaleDateString()}</p>
+                      </button>
+                    ))}
+                    {chatSessions.length === 0 && <p className="text-center text-muted-foreground text-xs py-4">No chats yet.</p>}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {activeChatSession && (
+                <Card className="border-border/50 bg-card/50 backdrop-blur-sm flex flex-col" style={{ maxHeight: "400px" }}>
+                  <CardContent className="p-3 flex flex-col h-full gap-2">
+                    <h3 className="font-semibold text-sm shrink-0">Reply</h3>
+                    <div className="flex-1 overflow-y-auto space-y-2 min-h-0">
+                      {(chatMessages[activeChatSession] || []).map((msg) => (
+                        <div key={msg.id} className={`flex gap-2 ${msg.sender_role === "admin" ? "flex-row-reverse" : ""}`}>
+                          <div className={`rounded-xl px-3 py-2 max-w-[80%] text-sm ${msg.sender_role === "admin" ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
+                            {msg.content}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex gap-2 shrink-0">
+                      <Input value={chatReply} onChange={(e) => setChatReply(e.target.value)} placeholder="Type reply..." className="text-sm h-9"
+                        onKeyDown={(e) => e.key === "Enter" && sendAdminReply()} />
+                      <Button size="icon" className="h-9 w-9 shrink-0" onClick={sendAdminReply} disabled={!chatReply.trim()}>
+                        <Send className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          </TabsContent>
+
         </Tabs>
 
         {/* Product Dialog */}
