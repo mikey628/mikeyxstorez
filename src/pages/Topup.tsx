@@ -340,12 +340,58 @@ const Topup = () => {
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="flex gap-2">
-                <Input
-                  placeholder="Your Game UID..."
-                  value={gameUid}
-                  onChange={(e) => { setGameUid(e.target.value); setUidVerified(false); setGameName(""); setUidError(""); }}
-                  className="bg-background/50 font-mono"
-                />
+                <div className="relative flex-1">
+                  <Input
+                    placeholder="Paste your Game UID here..."
+                    value={gameUid}
+                    readOnly
+                    onPaste={(e) => {
+                      e.preventDefault();
+                      const pasted = e.clipboardData.getData("text").trim();
+                      setGameUid(pasted);
+                      setUidVerified(false);
+                      setGameName("");
+                      setUidError("");
+                    }}
+                    onKeyDown={(e) => {
+                      if ((e.ctrlKey || e.metaKey) && e.key === "v") return;
+                      if (e.key === "Backspace" || e.key === "Delete" || e.key === "Tab") {
+                        if (e.key === "Backspace" || e.key === "Delete") {
+                          e.preventDefault();
+                          setGameUid("");
+                          setUidVerified(false);
+                          setGameName("");
+                          setUidError("");
+                        }
+                        return;
+                      }
+                      e.preventDefault();
+                    }}
+                    className="bg-background/50 font-mono pr-20 cursor-pointer select-all"
+                    onClick={async () => {
+                      try {
+                        const text = await navigator.clipboard.readText();
+                        if (text.trim()) {
+                          setGameUid(text.trim());
+                          setUidVerified(false);
+                          setGameName("");
+                          setUidError("");
+                        }
+                      } catch {}
+                    }}
+                  />
+                  {!gameUid && (
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none bg-muted/50 px-1.5 py-0.5 rounded">
+                      Paste only
+                    </span>
+                  )}
+                  {gameUid && (
+                    <button
+                      onClick={() => { setGameUid(""); setUidVerified(false); setGameName(""); setUidError(""); }}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground hover:text-destructive px-1.5 py-0.5 rounded bg-muted/50"
+                    >✕</button>
+                  )}
+                </div>
                 <Button
                   variant={uidVerified ? "outline" : "default"}
                   onClick={handleVerifyUid}
