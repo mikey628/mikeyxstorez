@@ -802,7 +802,7 @@ const Admin = () => {
                     <div>
                       <p className="font-medium">{p.name}</p>
                       <p className="text-xs text-muted-foreground">
-                        {p.price_points} pts · Stock: {p.stock} · Days: {(p.duration_days || [30]).join(", ")}
+                        {p.price_points} pts{(p as any).price_usd ? ` · $${(p as any).price_usd}` : ""} · Stock: {p.stock} · Days: {(p.duration_days || [30]).join(", ")}
                         {p.file_url && " · 📎 File"}
                       </p>
                     </div>
@@ -1467,7 +1467,16 @@ const Admin = () => {
             <div className="space-y-4">
               <Input placeholder="Product Name" value={productForm.name} onChange={(e) => setProductForm({ ...productForm, name: e.target.value })} className="bg-background/50" />
               <Input placeholder="Description" value={productForm.description} onChange={(e) => setProductForm({ ...productForm, description: e.target.value })} className="bg-background/50" />
-              <Input type="number" placeholder="Price (Points)" value={productForm.price_points} onChange={(e) => setProductForm({ ...productForm, price_points: parseInt(e.target.value) || 0 })} className="bg-background/50" />
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Price (Points)</label>
+                  <Input type="number" placeholder="Points" value={productForm.price_points} onChange={(e) => setProductForm({ ...productForm, price_points: parseInt(e.target.value) || 0 })} className="bg-background/50" />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Price (USD $)</label>
+                  <Input type="number" placeholder="0.00" step="0.01" value={(productForm as any).price_usd || ""} onChange={(e) => setProductForm({ ...productForm, price_usd: e.target.value } as any)} className="bg-background/50" />
+                </div>
+              </div>
               <div>
                 <label className="text-sm text-muted-foreground mb-1 block">Duration days (comma separated)</label>
                 <Input placeholder="1,3,5,6,7,10,14,15,30" value={productForm.duration_days} onChange={(e) => setProductForm({ ...productForm, duration_days: e.target.value })} className="bg-background/50" />

@@ -339,52 +339,37 @@ const Topup = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
+              {/* Show verified name above UID */}
+              {uidVerified && gameName && (
+                <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+                  className="bg-success/10 border border-success/30 rounded-xl p-3 space-y-1">
+                  <div className="flex items-center gap-2 text-success text-sm font-medium">
+                    <CheckCircle className="w-4 h-4" /> UID Verified ✅
+                  </div>
+                  <div className="text-xs text-muted-foreground space-y-0.5">
+                    <p className="flex items-center gap-1.5">
+                      <Gamepad2 className="w-3 h-3 text-primary" />
+                      Game Name: <span className="font-semibold text-primary text-sm">{gameName}</span>
+                    </p>
+                    <p>Player ID: <span className="font-mono text-foreground">{gameUid}</span></p>
+                    {selectedServer && <p>Server: <span className="text-foreground">{selectedServer.flag} {selectedServer.name}</span></p>}
+                    <p>Status: <span className="text-success font-medium">Active ✅</span></p>
+                  </div>
+                </motion.div>
+              )}
               <div className="flex gap-2">
                 <div className="relative flex-1">
                   <Input
-                    placeholder="Paste your Game UID here..."
+                    placeholder="Enter your Game UID..."
                     value={gameUid}
-                    readOnly
-                    onPaste={(e) => {
-                      e.preventDefault();
-                      const pasted = e.clipboardData.getData("text").trim();
-                      setGameUid(pasted);
+                    onChange={(e) => {
+                      setGameUid(e.target.value);
                       setUidVerified(false);
                       setGameName("");
                       setUidError("");
                     }}
-                    onKeyDown={(e) => {
-                      if ((e.ctrlKey || e.metaKey) && e.key === "v") return;
-                      if (e.key === "Backspace" || e.key === "Delete" || e.key === "Tab") {
-                        if (e.key === "Backspace" || e.key === "Delete") {
-                          e.preventDefault();
-                          setGameUid("");
-                          setUidVerified(false);
-                          setGameName("");
-                          setUidError("");
-                        }
-                        return;
-                      }
-                      e.preventDefault();
-                    }}
-                    className="bg-background/50 font-mono pr-20 cursor-pointer select-all"
-                    onClick={async () => {
-                      try {
-                        const text = await navigator.clipboard.readText();
-                        if (text.trim()) {
-                          setGameUid(text.trim());
-                          setUidVerified(false);
-                          setGameName("");
-                          setUidError("");
-                        }
-                      } catch {}
-                    }}
+                    className="bg-background/50 font-mono pr-8"
                   />
-                  {!gameUid && (
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none bg-muted/50 px-1.5 py-0.5 rounded">
-                      Paste only
-                    </span>
-                  )}
                   {gameUid && (
                     <button
                       onClick={() => { setGameUid(""); setUidVerified(false); setGameName(""); setUidError(""); }}
@@ -407,23 +392,6 @@ const Topup = () => {
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
                   className="flex items-center gap-2 text-destructive text-sm bg-destructive/10 rounded-xl p-3">
                   <AlertTriangle className="w-4 h-4 shrink-0" /> {uidError}
-                </motion.div>
-              )}
-              {uidVerified && gameName && (
-                <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-                  className="bg-success/10 border border-success/30 rounded-xl p-3 space-y-1">
-                  <div className="flex items-center gap-2 text-success text-sm font-medium">
-                    <CheckCircle className="w-4 h-4" /> UID Verified ✅
-                  </div>
-                  <div className="text-xs text-muted-foreground space-y-0.5">
-                    <p>Player ID: <span className="font-mono text-foreground">{gameUid}</span></p>
-                    <p className="flex items-center gap-1.5">
-                      <Gamepad2 className="w-3 h-3 text-primary" />
-                      Nickname: <span className="font-semibold text-primary text-sm">{gameName}</span>
-                    </p>
-                    {selectedServer && <p>Server: <span className="text-foreground">{selectedServer.flag} {selectedServer.name}</span></p>}
-                    <p>Status: <span className="text-success font-medium">Active ✅</span></p>
-                  </div>
                 </motion.div>
               )}
             </CardContent>
