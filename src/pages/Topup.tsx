@@ -50,9 +50,28 @@ const Topup = () => {
   const [selectedPayment, setSelectedPayment] = useState<string>("");
   const proofRef = useRef<HTMLInputElement>(null);
 
+  const [topupHistory, setTopupHistory] = useState<any[]>([]);
+
   useEffect(() => {
     saveState({ selectedGame, selectedPkg, selectedServer, gameUid, gameName, uidVerified });
   }, [selectedGame, selectedPkg, selectedServer, gameUid, gameName, uidVerified]);
+
+  // Auto-save draft when user selects a package
+  useEffect(() => {
+    if (selectedPkg && gameUid && user?.id) {
+      saveDraftHistory();
+    }
+  }, [selectedPkg?.id]);
+
+  // Fetch user's topup history
+  useEffect(() => {
+    if (!user?.id) return;
+    const fetchHistory = async () => {
+      const { data } = await supabase.from("topup_history" as any).select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(20);
+      setTopupHistory(data || []);
+    };
+    fetchHistory();
+  }, [user?.id, submitted]);
 
   useEffect(() => {
     const fetchData = async () => {
