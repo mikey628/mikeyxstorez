@@ -643,6 +643,50 @@ const Topup = () => {
             </p>
           </motion.div>
         )}
+
+        {/* User's Topup History */}
+        {user && topupHistory.length > 0 && (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+            <Card className="border-border/50 bg-card/50 backdrop-blur-md">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-primary" /> Your History
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 max-h-60 overflow-y-auto">
+                {topupHistory.map((h: any) => (
+                  <div key={h.id} className={`p-3 rounded-lg border text-sm ${
+                    h.status === "submitted" ? "border-success/30 bg-success/5" : "border-border/50 bg-muted/30"
+                  }`}>
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        {h.game_name && <p className="text-xs text-muted-foreground">{h.game_name}</p>}
+                        <p className="font-mono text-xs">{h.game_uid}</p>
+                        {h.player_name && <p className="text-xs text-primary">{h.player_name}</p>}
+                        {h.package_label && <p className="font-medium text-xs">{h.package_label} · {currencySymbol}{h.package_price}</p>}
+                      </div>
+                      <div className="text-right">
+                        <Badge variant={h.status === "submitted" ? "default" : "outline"} className="text-[10px] capitalize">
+                          {h.status}
+                        </Badge>
+                        <p className="text-[10px] text-muted-foreground mt-1">{new Date(h.created_at).toLocaleDateString()}</p>
+                      </div>
+                    </div>
+                    {h.status === "draft" && h.game_uid && (
+                      <Button variant="ghost" size="sm" className="w-full mt-2 h-7 text-xs"
+                        onClick={() => {
+                          setGameUid(h.game_uid);
+                          if (h.player_name) setGameName(h.player_name);
+                        }}>
+                        Resume this order →
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
       </div>
       <LiveChat />
     </div>
