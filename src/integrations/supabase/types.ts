@@ -169,6 +169,7 @@ export type Database = {
           id: string
           name: string
           price_points: number
+          price_usd: number | null
           stock: number
           updated_at: string
         }
@@ -181,6 +182,7 @@ export type Database = {
           id?: string
           name: string
           price_points: number
+          price_usd?: number | null
           stock?: number
           updated_at?: string
         }
@@ -193,6 +195,7 @@ export type Database = {
           id?: string
           name?: string
           price_points?: number
+          price_usd?: number | null
           stock?: number
           updated_at?: string
         }
@@ -299,28 +302,79 @@ export type Database = {
           created_at: string
           emoji: string | null
           id: string
+          id_label: string | null
           image_url: string | null
           is_active: boolean
           name: string
           sort_order: number | null
+          uid_label: string | null
         }
         Insert: {
           created_at?: string
           emoji?: string | null
           id?: string
+          id_label?: string | null
           image_url?: string | null
           is_active?: boolean
           name: string
           sort_order?: number | null
+          uid_label?: string | null
         }
         Update: {
           created_at?: string
           emoji?: string | null
           id?: string
+          id_label?: string | null
           image_url?: string | null
           is_active?: boolean
           name?: string
           sort_order?: number | null
+          uid_label?: string | null
+        }
+        Relationships: []
+      }
+      topup_history: {
+        Row: {
+          created_at: string
+          game_name: string | null
+          game_uid: string | null
+          id: string
+          package_label: string | null
+          package_price: number | null
+          payment_method: string | null
+          player_name: string | null
+          server_name: string | null
+          status: string | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          game_name?: string | null
+          game_uid?: string | null
+          id?: string
+          package_label?: string | null
+          package_price?: number | null
+          payment_method?: string | null
+          player_name?: string | null
+          server_name?: string | null
+          status?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          game_name?: string | null
+          game_uid?: string | null
+          id?: string
+          package_label?: string | null
+          package_price?: number | null
+          payment_method?: string | null
+          player_name?: string | null
+          server_name?: string | null
+          status?: string | null
+          updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }

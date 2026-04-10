@@ -50,9 +50,28 @@ const Topup = () => {
   const [selectedPayment, setSelectedPayment] = useState<string>("");
   const proofRef = useRef<HTMLInputElement>(null);
 
+  const [topupHistory, setTopupHistory] = useState<any[]>([]);
+
   useEffect(() => {
     saveState({ selectedGame, selectedPkg, selectedServer, gameUid, gameName, uidVerified });
   }, [selectedGame, selectedPkg, selectedServer, gameUid, gameName, uidVerified]);
+
+  // Auto-save draft when user selects a package
+  useEffect(() => {
+    if (selectedPkg && gameUid && user?.id) {
+      saveDraftHistory();
+    }
+  }, [selectedPkg?.id]);
+
+  // Fetch user's topup history
+  useEffect(() => {
+    if (!user?.id) return;
+    const fetchHistory = async () => {
+      const { data } = await supabase.from("topup_history" as any).select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(20);
+      setTopupHistory(data || []);
+    };
+    fetchHistory();
+  }, [user?.id, submitted]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -148,6 +167,24 @@ const Topup = () => {
     setProofPreview(URL.createObjectURL(file));
   };
 
+  // Save draft to topup_history when user has selected key items
+  const saveDraftHistory = async () => {
+    if (!user?.id || !gameUid) return;
+    try {
+      await supabase.from("topup_history" as any).insert({
+        user_id: user.id,
+        game_name: selectedGame?.name || null,
+        game_uid: gameUid,
+        player_name: gameName || null,
+        server_name: selectedServer?.name || null,
+        package_label: selectedPkg?.label || null,
+        package_price: selectedPkg?.price || 0,
+        payment_method: selectedPayment || null,
+        status: "draft",
+      });
+    } catch {}
+  };
+
   const handleSubmit = async () => {
     if (!selectedPkg) { toast.error("Select a package"); return; }
     if (servers.length > 0 && !selectedServer) { toast.error("Select a server"); return; }
@@ -195,6 +232,21 @@ const Topup = () => {
         server_name: selectedServer?.name || null,
       });
       if (error) throw error;
+
+      // Save to history as submitted
+      if (user?.id) {
+        await supabase.from("topup_history" as any).insert({
+          user_id: user.id,
+          game_name: selectedGame?.name || null,
+          game_uid: gameUid,
+          player_name: gameName || null,
+          server_name: selectedServer?.name || null,
+          package_label: selectedPkg.label,
+          package_price: selectedPkg.price,
+          payment_method: selectedPayment,
+          status: "submitted",
+        });
+      }
 
       localStorage.removeItem(STORAGE_KEY);
       setSubmitted(true);
@@ -335,56 +387,41 @@ const Topup = () => {
           <Card className="border-border/50 bg-card/50 backdrop-blur-md">
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
-                <User className="w-4 h-4 text-primary" /> Step {1 + gameOffset + stepOffset}: Enter Game UID
+                <User className="w-4 h-4 text-primary" /> Step {1 + gameOffset + stepOffset}: Enter {selectedGame?.uid_label || "Game UID"}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
+              {/* Show verified name above UID */}
+              {uidVerified && gameName && (
+                <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+                  className="bg-success/10 border border-success/30 rounded-xl p-3 space-y-1">
+                  <div className="flex items-center gap-2 text-success text-sm font-medium">
+                    <CheckCircle className="w-4 h-4" /> UID Verified ✅
+                  </div>
+                  <div className="text-xs text-muted-foreground space-y-0.5">
+                    <p className="flex items-center gap-1.5">
+                      <Gamepad2 className="w-3 h-3 text-primary" />
+                      Game Name: <span className="font-semibold text-primary text-sm">{gameName}</span>
+                    </p>
+                    <p>Player ID: <span className="font-mono text-foreground">{gameUid}</span></p>
+                    {selectedServer && <p>Server: <span className="text-foreground">{selectedServer.flag} {selectedServer.name}</span></p>}
+                    <p>Status: <span className="text-success font-medium">Active ✅</span></p>
+                  </div>
+                </motion.div>
+              )}
               <div className="flex gap-2">
                 <div className="relative flex-1">
                   <Input
-                    placeholder="Paste your Game UID here..."
+                    placeholder={`Enter your ${selectedGame?.uid_label || "Game UID"}...`}
                     value={gameUid}
-                    readOnly
-                    onPaste={(e) => {
-                      e.preventDefault();
-                      const pasted = e.clipboardData.getData("text").trim();
-                      setGameUid(pasted);
+                    onChange={(e) => {
+                      setGameUid(e.target.value);
                       setUidVerified(false);
                       setGameName("");
                       setUidError("");
                     }}
-                    onKeyDown={(e) => {
-                      if ((e.ctrlKey || e.metaKey) && e.key === "v") return;
-                      if (e.key === "Backspace" || e.key === "Delete" || e.key === "Tab") {
-                        if (e.key === "Backspace" || e.key === "Delete") {
-                          e.preventDefault();
-                          setGameUid("");
-                          setUidVerified(false);
-                          setGameName("");
-                          setUidError("");
-                        }
-                        return;
-                      }
-                      e.preventDefault();
-                    }}
-                    className="bg-background/50 font-mono pr-20 cursor-pointer select-all"
-                    onClick={async () => {
-                      try {
-                        const text = await navigator.clipboard.readText();
-                        if (text.trim()) {
-                          setGameUid(text.trim());
-                          setUidVerified(false);
-                          setGameName("");
-                          setUidError("");
-                        }
-                      } catch {}
-                    }}
+                    className="bg-background/50 font-mono pr-8"
                   />
-                  {!gameUid && (
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none bg-muted/50 px-1.5 py-0.5 rounded">
-                      Paste only
-                    </span>
-                  )}
                   {gameUid && (
                     <button
                       onClick={() => { setGameUid(""); setUidVerified(false); setGameName(""); setUidError(""); }}
@@ -407,23 +444,6 @@ const Topup = () => {
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
                   className="flex items-center gap-2 text-destructive text-sm bg-destructive/10 rounded-xl p-3">
                   <AlertTriangle className="w-4 h-4 shrink-0" /> {uidError}
-                </motion.div>
-              )}
-              {uidVerified && gameName && (
-                <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-                  className="bg-success/10 border border-success/30 rounded-xl p-3 space-y-1">
-                  <div className="flex items-center gap-2 text-success text-sm font-medium">
-                    <CheckCircle className="w-4 h-4" /> UID Verified ✅
-                  </div>
-                  <div className="text-xs text-muted-foreground space-y-0.5">
-                    <p>Player ID: <span className="font-mono text-foreground">{gameUid}</span></p>
-                    <p className="flex items-center gap-1.5">
-                      <Gamepad2 className="w-3 h-3 text-primary" />
-                      Nickname: <span className="font-semibold text-primary text-sm">{gameName}</span>
-                    </p>
-                    {selectedServer && <p>Server: <span className="text-foreground">{selectedServer.flag} {selectedServer.name}</span></p>}
-                    <p>Status: <span className="text-success font-medium">Active ✅</span></p>
-                  </div>
                 </motion.div>
               )}
             </CardContent>
@@ -621,6 +641,50 @@ const Topup = () => {
             <p className="text-center text-xs text-muted-foreground">
               Complete all steps above to place your order
             </p>
+          </motion.div>
+        )}
+
+        {/* User's Topup History */}
+        {user && topupHistory.length > 0 && (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+            <Card className="border-border/50 bg-card/50 backdrop-blur-md">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-primary" /> Your History
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 max-h-60 overflow-y-auto">
+                {topupHistory.map((h: any) => (
+                  <div key={h.id} className={`p-3 rounded-lg border text-sm ${
+                    h.status === "submitted" ? "border-success/30 bg-success/5" : "border-border/50 bg-muted/30"
+                  }`}>
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        {h.game_name && <p className="text-xs text-muted-foreground">{h.game_name}</p>}
+                        <p className="font-mono text-xs">{h.game_uid}</p>
+                        {h.player_name && <p className="text-xs text-primary">{h.player_name}</p>}
+                        {h.package_label && <p className="font-medium text-xs">{h.package_label} · {currencySymbol}{h.package_price}</p>}
+                      </div>
+                      <div className="text-right">
+                        <Badge variant={h.status === "submitted" ? "default" : "outline"} className="text-[10px] capitalize">
+                          {h.status}
+                        </Badge>
+                        <p className="text-[10px] text-muted-foreground mt-1">{new Date(h.created_at).toLocaleDateString()}</p>
+                      </div>
+                    </div>
+                    {h.status === "draft" && h.game_uid && (
+                      <Button variant="ghost" size="sm" className="w-full mt-2 h-7 text-xs"
+                        onClick={() => {
+                          setGameUid(h.game_uid);
+                          if (h.player_name) setGameName(h.player_name);
+                        }}>
+                        Resume this order →
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
           </motion.div>
         )}
       </div>

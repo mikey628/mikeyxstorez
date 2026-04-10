@@ -77,7 +77,7 @@ const Admin = () => {
   const [topupGames, setTopupGames] = useState<any[]>([]);
   const [gameDialog, setGameDialog] = useState(false);
   const [editGame, setEditGame] = useState<any>(null);
-  const [gameForm, setGameForm] = useState({ name: "", emoji: "🎮" });
+  const [gameForm, setGameForm] = useState<any>({ name: "", emoji: "🎮", uid_label: "Game UID", id_label: "Player ID" });
   const [gameImageFile, setGameImageFile] = useState<File | null>(null);
   const [gameUploading, setGameUploading] = useState(false);
 
@@ -282,7 +282,7 @@ const Admin = () => {
       }, 500);
     }
 
-    const payload = { 
+    const payload: any = { 
       name: productForm.name, 
       description: productForm.description, 
       price_points: productForm.price_points,
@@ -299,7 +299,7 @@ const Admin = () => {
     }
     setProductDialog(false);
     setEditProduct(null);
-    setProductForm({ name: "", description: "", price_points: 0, duration_days: "30" });
+    setProductForm({ name: "", description: "", price_points: 0, duration_days: "30", price_usd: "" } as any);
     setProductFile(null);
     fetchAll();
   };
@@ -513,7 +513,7 @@ const Admin = () => {
         imageUrl = publicUrl;
       }
     }
-    const payload = { name: gameForm.name, emoji: gameForm.emoji, image_url: imageUrl };
+    const payload = { name: gameForm.name, emoji: gameForm.emoji, image_url: imageUrl, uid_label: gameForm.uid_label || "Game UID", id_label: gameForm.id_label || "Player ID" };
     if (editGame) {
       await supabase.from("topup_games").update(payload).eq("id", editGame.id);
       toast.success("Game updated");
@@ -523,7 +523,7 @@ const Admin = () => {
     }
     setGameDialog(false);
     setEditGame(null);
-    setGameForm({ name: "", emoji: "🎮" });
+    setGameForm({ name: "", emoji: "🎮", uid_label: "Game UID", id_label: "Player ID" });
     setGameImageFile(null);
     setGameUploading(false);
     fetchAll();
@@ -788,7 +788,7 @@ const Admin = () => {
           {/* PRODUCTS TAB */}
           <TabsContent value="products" className="space-y-4">
             <div className="flex gap-2">
-              <Button onClick={() => { setEditProduct(null); setProductForm({ name: "", description: "", price_points: 0, duration_days: "1,3,5,6,7,10,14,15,30" }); setProductFile(null); setProductDialog(true); }}>
+              <Button onClick={() => { setEditProduct(null); setProductForm({ name: "", description: "", price_points: 0, duration_days: "1,3,5,6,7,10,14,15,30", price_usd: "" } as any); setProductFile(null); setProductDialog(true); }}>
                 <Plus className="w-4 h-4 mr-1" /> Add Product
               </Button>
               <Button variant="outline" onClick={() => setKeyDialog(true)}>
@@ -802,14 +802,14 @@ const Admin = () => {
                     <div>
                       <p className="font-medium">{p.name}</p>
                       <p className="text-xs text-muted-foreground">
-                        {p.price_points} pts · Stock: {p.stock} · Days: {(p.duration_days || [30]).join(", ")}
+                        {p.price_points} pts{(p as any).price_usd ? ` · $${(p as any).price_usd}` : ""} · Stock: {p.stock} · Days: {(p.duration_days || [30]).join(", ")}
                         {p.file_url && " · 📎 File"}
                       </p>
                     </div>
                     <div className="flex gap-1">
                       <Button variant="ghost" size="icon" onClick={() => { 
                         setEditProduct(p); 
-                        setProductForm({ name: p.name, description: p.description || "", price_points: p.price_points, duration_days: (p.duration_days || [30]).join(", ") }); 
+                        setProductForm({ name: p.name, description: p.description || "", price_points: p.price_points, duration_days: (p.duration_days || [30]).join(", "), price_usd: (p as any).price_usd || "" } as any); 
                         setProductFile(null); setProductDialog(true); 
                       }}>
                         <Edit className="w-4 h-4" />
@@ -1196,7 +1196,7 @@ const Admin = () => {
               <CardContent className="p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <h3 className="font-semibold flex items-center gap-2"><Gamepad2 className="w-4 h-4 text-primary" /> Games</h3>
-                  <Button size="sm" onClick={() => { setEditGame(null); setGameForm({ name: "", emoji: "🎮" }); setGameImageFile(null); setGameDialog(true); }}>
+                  <Button size="sm" onClick={() => { setEditGame(null); setGameForm({ name: "", emoji: "🎮", uid_label: "Game UID", id_label: "Player ID" }); setGameImageFile(null); setGameDialog(true); }}>
                     <Plus className="w-4 h-4 mr-1" /> Add Game
                   </Button>
                 </div>
@@ -1209,7 +1209,7 @@ const Admin = () => {
                         : <span className="text-3xl block mb-1">{game.emoji || "🎮"}</span>}
                       <p className="text-xs font-medium truncate">{game.name}</p>
                       <div className="absolute top-1 right-1 gap-0.5 hidden group-hover:flex">
-                        <button onClick={() => { setEditGame(game); setGameForm({ name: game.name, emoji: game.emoji || "🎮" }); setGameImageFile(null); setGameDialog(true); }}
+                        <button onClick={() => { setEditGame(game); setGameForm({ name: game.name, emoji: game.emoji || "🎮", uid_label: game.uid_label || "Game UID", id_label: game.id_label || "Player ID" }); setGameImageFile(null); setGameDialog(true); }}
                           className="p-0.5 rounded bg-card/80 text-muted-foreground hover:text-foreground"><Edit className="w-3 h-3" /></button>
                         <button onClick={async () => { await supabase.from("topup_games").delete().eq("id", game.id); fetchAll(); }}
                           className="p-0.5 rounded bg-card/80 text-muted-foreground hover:text-destructive"><Trash2 className="w-3 h-3" /></button>
@@ -1467,7 +1467,16 @@ const Admin = () => {
             <div className="space-y-4">
               <Input placeholder="Product Name" value={productForm.name} onChange={(e) => setProductForm({ ...productForm, name: e.target.value })} className="bg-background/50" />
               <Input placeholder="Description" value={productForm.description} onChange={(e) => setProductForm({ ...productForm, description: e.target.value })} className="bg-background/50" />
-              <Input type="number" placeholder="Price (Points)" value={productForm.price_points} onChange={(e) => setProductForm({ ...productForm, price_points: parseInt(e.target.value) || 0 })} className="bg-background/50" />
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Price (Points)</label>
+                  <Input type="number" placeholder="Points" value={productForm.price_points} onChange={(e) => setProductForm({ ...productForm, price_points: parseInt(e.target.value) || 0 })} className="bg-background/50" />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Price (USD $)</label>
+                  <Input type="number" placeholder="0.00" step="0.01" value={(productForm as any).price_usd || ""} onChange={(e) => setProductForm({ ...productForm, price_usd: e.target.value } as any)} className="bg-background/50" />
+                </div>
+              </div>
               <div>
                 <label className="text-sm text-muted-foreground mb-1 block">Duration days (comma separated)</label>
                 <Input placeholder="1,3,5,6,7,10,14,15,30" value={productForm.duration_days} onChange={(e) => setProductForm({ ...productForm, duration_days: e.target.value })} className="bg-background/50" />
@@ -1715,6 +1724,16 @@ const Admin = () => {
             <div className="space-y-3">
               <Input placeholder="Game Name (e.g. Free Fire)" value={gameForm.name} onChange={(e) => setGameForm({ ...gameForm, name: e.target.value })} className="bg-background/50" />
               <Input placeholder="Emoji (e.g. 🔫)" value={gameForm.emoji} onChange={(e) => setGameForm({ ...gameForm, emoji: e.target.value })} className="bg-background/50 text-lg" />
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">UID Field Label</label>
+                  <Input placeholder="Game UID" value={gameForm.uid_label || "Game UID"} onChange={(e) => setGameForm({ ...gameForm, uid_label: e.target.value })} className="bg-background/50" />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">ID Field Label</label>
+                  <Input placeholder="Player ID" value={gameForm.id_label || "Player ID"} onChange={(e) => setGameForm({ ...gameForm, id_label: e.target.value })} className="bg-background/50" />
+                </div>
+              </div>
               <div>
                 <label className="text-xs text-muted-foreground mb-1 block">Game Image (optional, replaces emoji)</label>
                 <div className="flex items-center gap-2">
