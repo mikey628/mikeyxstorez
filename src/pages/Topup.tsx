@@ -335,7 +335,7 @@ const Topup = () => {
           <Card className="border-border/50 bg-card/50 backdrop-blur-md">
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
-                <User className="w-4 h-4 text-primary" /> Step {1 + gameOffset + stepOffset}: Enter Game UID
+                <User className="w-4 h-4 text-primary" /> Step {1 + gameOffset + stepOffset}: Enter {selectedGame?.uid_label || "Game UID"}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -360,7 +360,7 @@ const Topup = () => {
               <div className="flex gap-2">
                 <div className="relative flex-1">
                   <Input
-                    placeholder="Enter your Game UID..."
+                    placeholder={`Enter your ${selectedGame?.uid_label || "Game UID"}...`}
                     value={gameUid}
                     onChange={(e) => {
                       setGameUid(e.target.value);
