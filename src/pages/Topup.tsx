@@ -148,6 +148,24 @@ const Topup = () => {
     setProofPreview(URL.createObjectURL(file));
   };
 
+  // Save draft to topup_history when user has selected key items
+  const saveDraftHistory = async () => {
+    if (!user?.id || !gameUid) return;
+    try {
+      await supabase.from("topup_history" as any).insert({
+        user_id: user.id,
+        game_name: selectedGame?.name || null,
+        game_uid: gameUid,
+        player_name: gameName || null,
+        server_name: selectedServer?.name || null,
+        package_label: selectedPkg?.label || null,
+        package_price: selectedPkg?.price || 0,
+        payment_method: selectedPayment || null,
+        status: "draft",
+      });
+    } catch {}
+  };
+
   const handleSubmit = async () => {
     if (!selectedPkg) { toast.error("Select a package"); return; }
     if (servers.length > 0 && !selectedServer) { toast.error("Select a server"); return; }
@@ -195,6 +213,21 @@ const Topup = () => {
         server_name: selectedServer?.name || null,
       });
       if (error) throw error;
+
+      // Save to history as submitted
+      if (user?.id) {
+        await supabase.from("topup_history" as any).insert({
+          user_id: user.id,
+          game_name: selectedGame?.name || null,
+          game_uid: gameUid,
+          player_name: gameName || null,
+          server_name: selectedServer?.name || null,
+          package_label: selectedPkg.label,
+          package_price: selectedPkg.price,
+          payment_method: selectedPayment,
+          status: "submitted",
+        });
+      }
 
       localStorage.removeItem(STORAGE_KEY);
       setSubmitted(true);
