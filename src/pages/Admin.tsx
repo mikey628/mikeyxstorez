@@ -1724,6 +1724,16 @@ const Admin = () => {
             <div className="space-y-3">
               <Input placeholder="Game Name (e.g. Free Fire)" value={gameForm.name} onChange={(e) => setGameForm({ ...gameForm, name: e.target.value })} className="bg-background/50" />
               <Input placeholder="Emoji (e.g. 🔫)" value={gameForm.emoji} onChange={(e) => setGameForm({ ...gameForm, emoji: e.target.value })} className="bg-background/50 text-lg" />
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">UID Field Label</label>
+                  <Input placeholder="Game UID" value={gameForm.uid_label || "Game UID"} onChange={(e) => setGameForm({ ...gameForm, uid_label: e.target.value })} className="bg-background/50" />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">ID Field Label</label>
+                  <Input placeholder="Player ID" value={gameForm.id_label || "Player ID"} onChange={(e) => setGameForm({ ...gameForm, id_label: e.target.value })} className="bg-background/50" />
+                </div>
+              </div>
               <div>
                 <label className="text-xs text-muted-foreground mb-1 block">Game Image (optional, replaces emoji)</label>
                 <div className="flex items-center gap-2">
