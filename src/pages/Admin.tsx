@@ -282,7 +282,7 @@ const Admin = () => {
       }, 500);
     }
 
-    const payload = { 
+    const payload: any = { 
       name: productForm.name, 
       description: productForm.description, 
       price_points: productForm.price_points,
@@ -299,7 +299,7 @@ const Admin = () => {
     }
     setProductDialog(false);
     setEditProduct(null);
-    setProductForm({ name: "", description: "", price_points: 0, duration_days: "30" });
+    setProductForm({ name: "", description: "", price_points: 0, duration_days: "30", price_usd: "" } as any);
     setProductFile(null);
     fetchAll();
   };
@@ -788,7 +788,7 @@ const Admin = () => {
           {/* PRODUCTS TAB */}
           <TabsContent value="products" className="space-y-4">
             <div className="flex gap-2">
-              <Button onClick={() => { setEditProduct(null); setProductForm({ name: "", description: "", price_points: 0, duration_days: "1,3,5,6,7,10,14,15,30" }); setProductFile(null); setProductDialog(true); }}>
+              <Button onClick={() => { setEditProduct(null); setProductForm({ name: "", description: "", price_points: 0, duration_days: "1,3,5,6,7,10,14,15,30", price_usd: "" } as any); setProductFile(null); setProductDialog(true); }}>
                 <Plus className="w-4 h-4 mr-1" /> Add Product
               </Button>
               <Button variant="outline" onClick={() => setKeyDialog(true)}>
@@ -809,7 +809,7 @@ const Admin = () => {
                     <div className="flex gap-1">
                       <Button variant="ghost" size="icon" onClick={() => { 
                         setEditProduct(p); 
-                        setProductForm({ name: p.name, description: p.description || "", price_points: p.price_points, duration_days: (p.duration_days || [30]).join(", ") }); 
+                        setProductForm({ name: p.name, description: p.description || "", price_points: p.price_points, duration_days: (p.duration_days || [30]).join(", "), price_usd: (p as any).price_usd || "" } as any); 
                         setProductFile(null); setProductDialog(true); 
                       }}>
                         <Edit className="w-4 h-4" />
