@@ -77,7 +77,7 @@ const Admin = () => {
   const [topupGames, setTopupGames] = useState<any[]>([]);
   const [gameDialog, setGameDialog] = useState(false);
   const [editGame, setEditGame] = useState<any>(null);
-  const [gameForm, setGameForm] = useState({ name: "", emoji: "🎮" });
+  const [gameForm, setGameForm] = useState<any>({ name: "", emoji: "🎮", uid_label: "Game UID", id_label: "Player ID" });
   const [gameImageFile, setGameImageFile] = useState<File | null>(null);
   const [gameUploading, setGameUploading] = useState(false);
 
@@ -513,7 +513,7 @@ const Admin = () => {
         imageUrl = publicUrl;
       }
     }
-    const payload = { name: gameForm.name, emoji: gameForm.emoji, image_url: imageUrl };
+    const payload = { name: gameForm.name, emoji: gameForm.emoji, image_url: imageUrl, uid_label: gameForm.uid_label || "Game UID", id_label: gameForm.id_label || "Player ID" };
     if (editGame) {
       await supabase.from("topup_games").update(payload).eq("id", editGame.id);
       toast.success("Game updated");
@@ -523,7 +523,7 @@ const Admin = () => {
     }
     setGameDialog(false);
     setEditGame(null);
-    setGameForm({ name: "", emoji: "🎮" });
+    setGameForm({ name: "", emoji: "🎮", uid_label: "Game UID", id_label: "Player ID" });
     setGameImageFile(null);
     setGameUploading(false);
     fetchAll();
