@@ -1196,7 +1196,7 @@ const Admin = () => {
               <CardContent className="p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <h3 className="font-semibold flex items-center gap-2"><Gamepad2 className="w-4 h-4 text-primary" /> Games</h3>
-                  <Button size="sm" onClick={() => { setEditGame(null); setGameForm({ name: "", emoji: "🎮" }); setGameImageFile(null); setGameDialog(true); }}>
+                  <Button size="sm" onClick={() => { setEditGame(null); setGameForm({ name: "", emoji: "🎮", uid_label: "Game UID", id_label: "Player ID" }); setGameImageFile(null); setGameDialog(true); }}>
                     <Plus className="w-4 h-4 mr-1" /> Add Game
                   </Button>
                 </div>
@@ -1209,7 +1209,7 @@ const Admin = () => {
                         : <span className="text-3xl block mb-1">{game.emoji || "🎮"}</span>}
                       <p className="text-xs font-medium truncate">{game.name}</p>
                       <div className="absolute top-1 right-1 gap-0.5 hidden group-hover:flex">
-                        <button onClick={() => { setEditGame(game); setGameForm({ name: game.name, emoji: game.emoji || "🎮" }); setGameImageFile(null); setGameDialog(true); }}
+                        <button onClick={() => { setEditGame(game); setGameForm({ name: game.name, emoji: game.emoji || "🎮", uid_label: game.uid_label || "Game UID", id_label: game.id_label || "Player ID" }); setGameImageFile(null); setGameDialog(true); }}
                           className="p-0.5 rounded bg-card/80 text-muted-foreground hover:text-foreground"><Edit className="w-3 h-3" /></button>
                         <button onClick={async () => { await supabase.from("topup_games").delete().eq("id", game.id); fetchAll(); }}
                           className="p-0.5 rounded bg-card/80 text-muted-foreground hover:text-destructive"><Trash2 className="w-3 h-3" /></button>
