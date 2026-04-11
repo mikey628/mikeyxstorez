@@ -38,9 +38,6 @@ const Topup = () => {
   const [selectedServer, setSelectedServer] = useState<any>(saved?.selectedServer || null);
   const [gameUid, setGameUid] = useState(saved?.gameUid || "");
   const [gameName, setGameName] = useState(saved?.gameName || "");
-  const [uidVerified, setUidVerified] = useState(saved?.uidVerified || false);
-  const [verifyLoading, setVerifyLoading] = useState(false);
-  const [uidError, setUidError] = useState("");
 
   const [proofFile, setProofFile] = useState<File | null>(null);
   const [proofPreview, setProofPreview] = useState<string | null>(null);
@@ -53,8 +50,8 @@ const Topup = () => {
   const [topupHistory, setTopupHistory] = useState<any[]>([]);
 
   useEffect(() => {
-    saveState({ selectedGame, selectedPkg, selectedServer, gameUid, gameName, uidVerified });
-  }, [selectedGame, selectedPkg, selectedServer, gameUid, gameName, uidVerified]);
+    saveState({ selectedGame, selectedPkg, selectedServer, gameUid, gameName });
+  }, [selectedGame, selectedPkg, selectedServer, gameUid, gameName]);
 
   // Auto-save draft when user selects a package
   useEffect(() => {
@@ -129,32 +126,8 @@ const Topup = () => {
     ? packages.filter(p => p.game_id === selectedGame.id)
     : packages;
 
-  const handleVerifyUid = async () => {
-    if (!gameUid.trim()) { toast.error("Enter your Game UID"); return; }
-    if (servers.length > 0 && !selectedServer) { toast.error("Select a server first"); return; }
-    setVerifyLoading(true);
-    setUidError("");
-    setGameName("");
-    setUidVerified(false);
-    try {
-      const { data, error } = await supabase.functions.invoke("verify-ff-uid", {
-        body: { uid: gameUid.trim() },
-      });
-      if (error || data?.error) {
-        const msg = data?.error || "Invalid UID. Please check and try again.";
-        setUidError(msg);
-        toast.error(msg);
-      } else {
-        setGameName(data.nickname);
-        setUidVerified(true);
-        toast.success(`✅ UID Verified! Game name: ${data.nickname}`);
-      }
-    } catch {
-      setUidError("Failed to verify UID. Please try again.");
-      toast.error("Failed to verify UID.");
-    }
-    setVerifyLoading(false);
-  };
+  // Check if UID step is complete
+  const uidStepComplete = gameUid.trim().length > 0 && gameName.trim().length > 0;
 
   const handleProofChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -188,7 +161,7 @@ const Topup = () => {
   const handleSubmit = async () => {
     if (!selectedPkg) { toast.error("Select a package"); return; }
     if (servers.length > 0 && !selectedServer) { toast.error("Select a server"); return; }
-    if (!uidVerified || !gameUid.trim()) { toast.error("Verify your UID first"); return; }
+    if (!gameUid.trim() || !gameName.trim()) { toast.error("Enter your UID and Game Name"); return; }
     if (paymentMethods.length > 0 && !selectedPayment) { toast.error("Select a payment method"); return; }
     if (paymentMethods.length > 0 && !proofFile) { toast.error("Upload payment proof screenshot"); return; }
 
@@ -259,9 +232,9 @@ const Topup = () => {
 
   const reset = () => {
     setSubmitted(false); setSelectedPkg(null); setSelectedServer(null);
-    setGameUid(""); setGameName(""); setUidVerified(false);
+    setGameUid(""); setGameName("");
     setProofFile(null); setProofPreview(null); setFakeWarning(false);
-    setSelectedGame(null); setUidError("");
+    setSelectedGame(null);
     localStorage.removeItem(STORAGE_KEY);
   };
 
