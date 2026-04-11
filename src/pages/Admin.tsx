@@ -1960,6 +1960,33 @@ const Admin = () => {
             ) : null}
           </DialogContent>
         </Dialog>
+
+        {/* Credit Package Dialog */}
+        <Dialog open={creditPkgDialog} onOpenChange={setCreditPkgDialog}>
+          <DialogContent className="bg-card/95 backdrop-blur-xl">
+            <DialogHeader>
+              <DialogTitle>{editCreditPkg ? "Edit Credit Package" : "Add Credit Package"}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Credit Amount ($)</label>
+                <Input type="number" placeholder="e.g. 200" value={creditPkgForm.amount || ""} onChange={(e) => setCreditPkgForm({ ...creditPkgForm, amount: Number(e.target.value) })} className="bg-background/50" />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Price ($)</label>
+                <Input type="number" placeholder="e.g. 200" value={creditPkgForm.price || ""} onChange={(e) => setCreditPkgForm({ ...creditPkgForm, price: Number(e.target.value) })} className="bg-background/50" />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Description (optional)</label>
+                <Input placeholder="e.g. Basic credit pack" value={creditPkgForm.description} onChange={(e) => setCreditPkgForm({ ...creditPkgForm, description: e.target.value })} className="bg-background/50" />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setCreditPkgDialog(false)}>Cancel</Button>
+              <Button onClick={saveCreditPackage}>Save</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );
