@@ -76,6 +76,95 @@ export type Database = {
         }
         Relationships: []
       }
+      credit_packages: {
+        Row: {
+          amount: number
+          created_at: string
+          description: string | null
+          id: string
+          image_url: string | null
+          is_active: boolean
+          price: number
+          qr_url: string | null
+          sort_order: number | null
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          price?: number
+          qr_url?: string | null
+          sort_order?: number | null
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          price?: number
+          qr_url?: string | null
+          sort_order?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      credit_requests: {
+        Row: {
+          admin_note: string | null
+          amount_paid: number
+          created_at: string
+          id: string
+          package_amount: number
+          package_id: string | null
+          payment_method: string
+          payment_proof_url: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          admin_note?: string | null
+          amount_paid?: number
+          created_at?: string
+          id?: string
+          package_amount?: number
+          package_id?: string | null
+          payment_method?: string
+          payment_proof_url?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          admin_note?: string | null
+          amount_paid?: number
+          created_at?: string
+          id?: string
+          package_amount?: number
+          package_id?: string | null
+          payment_method?: string
+          payment_proof_url?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credit_requests_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "credit_packages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       keys: {
         Row: {
           created_at: string

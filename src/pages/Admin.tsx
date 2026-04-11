@@ -93,6 +93,13 @@ const Admin = () => {
   const [chatSettings, setChatSettings] = useState({ welcome: "Welcome! 👋 How can we help you today?", response_time: "5-15 minutes", enabled: "true" });
   const [unreadChats, setUnreadChats] = useState(0);
 
+  // Credit packages & requests
+  const [creditPackages, setCreditPackages] = useState<any[]>([]);
+  const [creditRequests, setCreditRequests] = useState<any[]>([]);
+  const [creditPkgDialog, setCreditPkgDialog] = useState(false);
+  const [editCreditPkg, setEditCreditPkg] = useState<any>(null);
+  const [creditPkgForm, setCreditPkgForm] = useState({ amount: 0, price: 0, description: "" });
+
   // Product dialog
   const [productDialog, setProductDialog] = useState(false);
   const [editProduct, setEditProduct] = useState<any>(null);
@@ -148,9 +155,13 @@ const Admin = () => {
     const { data: tadmins } = await supabase.from("topup_admins").select("*").order("created_at", { ascending: false });
     const { data: gms } = await supabase.from("topup_games").select("*").order("sort_order");
     const { data: sessions } = await supabase.from("chat_sessions").select("*").order("updated_at", { ascending: false });
+    const { data: credPkgs } = await supabase.from("credit_packages" as any).select("*").order("sort_order");
+    const { data: credReqs } = await supabase.from("credit_requests" as any).select("*").order("created_at", { ascending: false });
     setTopupGames(gms || []);
     setChatSessions(sessions || []);
     setUnreadChats((sessions || []).filter((s: any) => s.status === "open").length);
+    setCreditPackages(credPkgs || []);
+    setCreditRequests(credReqs || []);
 
     setProducts(prods || []);
     setTransactions(txns || []);
@@ -698,11 +709,54 @@ const Admin = () => {
   };
 
 
+  // Credit package CRUD
+  const saveCreditPackage = async () => {
+    if (!creditPkgForm.amount || !creditPkgForm.price) { toast.error("Fill amount and price"); return; }
+    const payload = { amount: creditPkgForm.amount, price: creditPkgForm.price, description: creditPkgForm.description };
+    if (editCreditPkg) {
+      await supabase.from("credit_packages" as any).update(payload).eq("id", editCreditPkg.id);
+      toast.success("Credit package updated");
+    } else {
+      await supabase.from("credit_packages" as any).insert(payload);
+      toast.success("Credit package added");
+    }
+    setCreditPkgDialog(false);
+    setEditCreditPkg(null);
+    setCreditPkgForm({ amount: 0, price: 0, description: "" });
+    fetchAll();
+  };
+
+  const deleteCreditPackage = async (id: string) => {
+    await supabase.from("credit_packages" as any).delete().eq("id", id);
+    toast.success("Credit package deleted");
+    fetchAll();
+  };
+
+  const handleCreditRequest = async (reqId: string, action: "approved" | "rejected") => {
+    const req = creditRequests.find((r: any) => r.id === reqId);
+    if (!req) return;
+    await supabase.from("credit_requests" as any).update({ status: action }).eq("id", reqId);
+    if (action === "approved" && req.user_id) {
+      // Add credits to user wallet
+      const { data: userProfile } = await supabase.from("profiles").select("wallet_points").eq("user_id", req.user_id).single();
+      if (userProfile) {
+        await supabase.from("profiles").update({ wallet_points: (userProfile.wallet_points || 0) + Number(req.package_amount) }).eq("user_id", req.user_id);
+        await supabase.from("transactions").insert({
+          user_id: req.user_id,
+          type: "credit_added",
+          amount: Number(req.package_amount),
+          description: `Credit purchase approved ($${req.package_amount})`,
+        });
+      }
+    }
+    toast.success(`Request ${action}`);
+    fetchAll();
+  };
 
   const statCards = [
     { label: "Total Users", value: stats.users, icon: Users },
     { label: "Total Sales", value: stats.sales, icon: Package },
-    { label: "Points in System", value: stats.points, icon: Coins },
+    { label: "Credits in System", value: `$${stats.points}`, icon: Coins },
     { label: "Stock Remaining", value: stats.stock, icon: Key },
   ];
 
@@ -765,6 +819,7 @@ const Admin = () => {
             <TabsTrigger value="users">Users</TabsTrigger>
             <TabsTrigger value="keys">Keys</TabsTrigger>
             <TabsTrigger value="transactions">Txns</TabsTrigger>
+            <TabsTrigger value="credits">Credits</TabsTrigger>
             <TabsTrigger value="offers">Offers</TabsTrigger>
             <TabsTrigger value="topup" className="relative" onClick={() => { setPendingNotifCount(0); setShowNotifBell(false); }}>
               Topup
@@ -1000,6 +1055,90 @@ const Admin = () => {
             <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
               <CardContent className="p-6">
                 <ThemeSettingsComponent />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* CREDITS TAB */}
+          <TabsContent value="credits" className="space-y-4">
+            <div className="flex gap-2">
+              <Button onClick={() => { setEditCreditPkg(null); setCreditPkgForm({ amount: 0, price: 0, description: "" }); setCreditPkgDialog(true); }}>
+                <Plus className="w-4 h-4 mr-1" /> Add Credit Package
+              </Button>
+            </div>
+
+            {/* Credit Packages */}
+            <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
+              <CardContent className="p-4">
+                <h3 className="font-semibold mb-3">Credit Packages</h3>
+                <div className="space-y-2">
+                  {creditPackages.map((pkg: any) => (
+                    <div key={pkg.id} className="flex items-center justify-between p-3 rounded-lg border border-border/50 bg-background/50">
+                      <div>
+                        <p className="font-bold text-primary">${pkg.amount} Credits</p>
+                        <p className="text-xs text-muted-foreground">Price: ${pkg.price} {pkg.description && `· ${pkg.description}`}</p>
+                      </div>
+                      <div className="flex gap-1">
+                        <Button variant="ghost" size="icon" onClick={() => { setEditCreditPkg(pkg); setCreditPkgForm({ amount: pkg.amount, price: pkg.price, description: pkg.description || "" }); setCreditPkgDialog(true); }}>
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => deleteCreditPackage(pkg.id)}>
+                          <Trash2 className="w-4 h-4 text-destructive" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                  {creditPackages.length === 0 && <p className="text-sm text-muted-foreground">No credit packages yet. Add one above.</p>}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Credit Requests */}
+            <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
+              <CardContent className="p-4">
+                <h3 className="font-semibold mb-3">Credit Purchase Requests</h3>
+                <div className="space-y-2 max-h-96 overflow-y-auto">
+                  {creditRequests.map((req: any) => {
+                    const reqUser = users.find((u: any) => u.user_id === req.user_id);
+                    return (
+                      <div key={req.id} className={`p-3 rounded-lg border text-sm ${
+                        req.status === "approved" ? "border-success/30 bg-success/5" :
+                        req.status === "rejected" ? "border-destructive/30 bg-destructive/5" :
+                        "border-border/50 bg-background/50"
+                      }`}>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="font-medium">{reqUser?.email || req.user_id}</p>
+                            <p className="text-primary font-bold">${req.package_amount} Credits</p>
+                            <p className="text-xs text-muted-foreground">Paid: ${req.amount_paid} · {req.payment_method}</p>
+                            <p className="text-[10px] text-muted-foreground">{new Date(req.created_at).toLocaleString()}</p>
+                          </div>
+                          <div className="flex flex-col items-end gap-1">
+                            <Badge variant={req.status === "approved" ? "default" : req.status === "rejected" ? "destructive" : "outline"} className="capitalize text-[10px]">
+                              {req.status}
+                            </Badge>
+                            {req.status === "pending" && (
+                              <div className="flex gap-1">
+                                <Button size="sm" variant="default" className="h-7 text-xs" onClick={() => handleCreditRequest(req.id, "approved")}>
+                                  <CheckCircle className="w-3 h-3 mr-1" /> Approve
+                                </Button>
+                                <Button size="sm" variant="destructive" className="h-7 text-xs" onClick={() => handleCreditRequest(req.id, "rejected")}>
+                                  <XCircle className="w-3 h-3 mr-1" /> Reject
+                                </Button>
+                              </div>
+                            )}
+                            {req.payment_proof_url && (
+                              <Button size="sm" variant="ghost" className="h-6 text-[10px]" onClick={() => viewProof(req.payment_proof_url)}>
+                                <Eye className="w-3 h-3 mr-1" /> View Proof
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {creditRequests.length === 0 && <p className="text-sm text-muted-foreground">No credit purchase requests yet.</p>}
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -1819,6 +1958,33 @@ const Admin = () => {
                 </Button>
               </div>
             ) : null}
+          </DialogContent>
+        </Dialog>
+
+        {/* Credit Package Dialog */}
+        <Dialog open={creditPkgDialog} onOpenChange={setCreditPkgDialog}>
+          <DialogContent className="bg-card/95 backdrop-blur-xl">
+            <DialogHeader>
+              <DialogTitle>{editCreditPkg ? "Edit Credit Package" : "Add Credit Package"}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Credit Amount ($)</label>
+                <Input type="number" placeholder="e.g. 200" value={creditPkgForm.amount || ""} onChange={(e) => setCreditPkgForm({ ...creditPkgForm, amount: Number(e.target.value) })} className="bg-background/50" />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Price ($)</label>
+                <Input type="number" placeholder="e.g. 200" value={creditPkgForm.price || ""} onChange={(e) => setCreditPkgForm({ ...creditPkgForm, price: Number(e.target.value) })} className="bg-background/50" />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Description (optional)</label>
+                <Input placeholder="e.g. Basic credit pack" value={creditPkgForm.description} onChange={(e) => setCreditPkgForm({ ...creditPkgForm, description: e.target.value })} className="bg-background/50" />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setCreditPkgDialog(false)}>Cancel</Button>
+              <Button onClick={saveCreditPackage}>Save</Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>

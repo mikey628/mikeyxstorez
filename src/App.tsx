@@ -15,6 +15,7 @@ import Admin from "./pages/Admin";
 import Profile from "./pages/Profile";
 import Topup from "./pages/Topup";
 import TopupAdmin from "./pages/TopupAdmin";
+import BuyCredit from "./pages/BuyCredit";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -47,6 +48,7 @@ const App = () => (
               <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
               <Route path="/topup" element={<Topup />} />
               <Route path="/topup-admin" element={<ProtectedRoute><TopupAdmin /></ProtectedRoute>} />
+              <Route path="/buy-credit" element={<ProtectedRoute><BuyCredit /></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </AuthProvider>

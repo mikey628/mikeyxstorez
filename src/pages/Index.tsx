@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { motion } from "framer-motion";
-import { Wallet, Zap, ShoppingCart, ArrowRight } from "lucide-react";
+import { Wallet, Zap, ShoppingCart, ArrowRight, CreditCard } from "lucide-react";
 
 const Index = () => {
   const { user, loading } = useAuth();
@@ -90,6 +90,14 @@ const Index = () => {
             <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}>
               <Button size="lg" variant="outline" className="w-full sm:w-auto gap-2" asChild>
                 <Link to="/auth">
+                  <CreditCard className="w-5 h-5" />
+                  Buy Credits 💳
+                </Link>
+              </Button>
+            </motion.div>
+            <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}>
+              <Button size="lg" variant="ghost" className="w-full sm:w-auto gap-2" asChild>
+                <Link to="/auth">
                   <ShoppingCart className="w-5 h-5" />
                   Browse Store
                 </Link>
@@ -108,7 +116,7 @@ const Index = () => {
           {[
             { icon: "⚡", title: "Instant Top-Up", desc: "Fast game top-ups processed by our team" },
             { icon: "🔑", title: "Game Keys", desc: "Premium keys for your favourite games" },
-            { icon: "💰", title: "Best Prices", desc: "Competitive pricing with wallet points system" },
+            { icon: "💰", title: "Best Prices", desc: "Competitive pricing with credit system" },
           ].map((f) => (
             <div
               key={f.title}
