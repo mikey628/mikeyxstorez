@@ -93,6 +93,13 @@ const Admin = () => {
   const [chatSettings, setChatSettings] = useState({ welcome: "Welcome! 👋 How can we help you today?", response_time: "5-15 minutes", enabled: "true" });
   const [unreadChats, setUnreadChats] = useState(0);
 
+  // Credit packages & requests
+  const [creditPackages, setCreditPackages] = useState<any[]>([]);
+  const [creditRequests, setCreditRequests] = useState<any[]>([]);
+  const [creditPkgDialog, setCreditPkgDialog] = useState(false);
+  const [editCreditPkg, setEditCreditPkg] = useState<any>(null);
+  const [creditPkgForm, setCreditPkgForm] = useState({ amount: 0, price: 0, description: "" });
+
   // Product dialog
   const [productDialog, setProductDialog] = useState(false);
   const [editProduct, setEditProduct] = useState<any>(null);
