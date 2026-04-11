@@ -5,7 +5,7 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { NepalFlag } from "@/components/NepalFlag";
 import { LogoBall } from "@/components/LogoBall";
-import { Wallet, ShoppingCart, History, Package, User } from "lucide-react";
+import { Wallet, ShoppingCart, History, Package, User, CreditCard } from "lucide-react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
@@ -55,7 +55,7 @@ const Dashboard = () => {
   }, [user]);
 
   const stats = [
-    { label: t("walletPoints"), value: profile?.wallet_points ?? 0, icon: Wallet, gradient: "from-purple-500/20 to-blue-500/20" },
+    { label: "Credits ($)", value: `$${profile?.wallet_points ?? 0}`, icon: CreditCard, gradient: "from-purple-500/20 to-blue-500/20" },
     { label: t("totalPurchases"), value: profile?.total_purchases ?? 0, icon: ShoppingCart, gradient: "from-green-500/20 to-emerald-500/20" },
     { label: t("availableProducts"), value: productCount, icon: Package, gradient: "from-amber-500/20 to-orange-500/20" },
     { label: t("transactions"), value: recentTransactions.length, icon: History, gradient: "from-sky-500/20 to-indigo-500/20" },
@@ -104,8 +104,8 @@ const Dashboard = () => {
                 <p className="text-xs text-muted-foreground">View & edit your profile →</p>
               </div>
               <div className="text-right">
-                <p className="text-lg font-bold text-primary">{profile?.wallet_points ?? 0}</p>
-                <p className="text-xs text-muted-foreground">{t("points")}</p>
+                <p className="text-lg font-bold text-primary">${profile?.wallet_points ?? 0}</p>
+                <p className="text-xs text-muted-foreground">Credits</p>
               </div>
             </CardContent>
           </Card>
@@ -153,8 +153,8 @@ const Dashboard = () => {
                           <p className="text-sm font-medium">{tx.description}</p>
                           <p className="text-xs text-muted-foreground">{new Date(tx.created_at).toLocaleDateString()}</p>
                         </div>
-                        <span className={`text-sm font-semibold ${tx.type === "point_added" ? "text-success" : "text-destructive"}`}>
-                          {tx.type === "point_added" ? "+" : "-"}{tx.amount} {t("pts")}
+                        <span className={`text-sm font-semibold ${tx.type === "point_added" || tx.type === "credit_added" ? "text-success" : "text-destructive"}`}>
+                          {tx.type === "point_added" || tx.type === "credit_added" ? "+" : "-"}${tx.amount}
                         </span>
                       </div>
                     ))}
@@ -165,17 +165,17 @@ const Dashboard = () => {
           </motion.div>
 
           <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.35 }}>
-            <Card className="border-border/50 bg-card/50 backdrop-blur-sm cursor-pointer hover:border-primary/50 transition-all hover:shadow-lg hover:shadow-primary/5" onClick={() => navigate("/products")}>
+            <Card className="border-border/50 bg-card/50 backdrop-blur-sm cursor-pointer hover:border-primary/50 transition-all hover:shadow-lg hover:shadow-primary/5" onClick={() => navigate("/buy-credit")}>
               <CardHeader>
-                <CardTitle className="text-lg">{t("browseProducts")}</CardTitle>
+                <CardTitle className="text-lg flex items-center gap-2">💳 Buy Credits</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-muted-foreground text-sm mb-4">
-                  Explore our digital products and redeem your points for access keys.
+                  Purchase credits to buy game keys and unlock premium content.
                 </p>
                 <div className="flex items-center gap-2 text-primary text-sm font-medium">
-                  <Package className="w-4 h-4" />
-                  {t("viewAll")}
+                  <CreditCard className="w-4 h-4" />
+                  Buy Credits Now →
                 </div>
               </CardContent>
             </Card>
