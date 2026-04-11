@@ -339,7 +339,7 @@ const Topup = () => {
               <CardContent className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {servers.map((srv) => (
                   <motion.button key={srv.id} whileTap={{ scale: 0.95 }}
-                    onClick={() => { setSelectedServer(srv); setUidVerified(false); setGameName(""); }}
+                    onClick={() => { setSelectedServer(srv); setGameName(""); }}
                     className={`p-3 rounded-xl border-2 transition-all text-center ${
                       selectedServer?.id === srv.id ? "border-primary bg-primary/10" : "border-border/50 bg-background/50 hover:border-primary/50"
                     }`}>
@@ -355,68 +355,41 @@ const Topup = () => {
           </motion.div>
         )}
 
-        {/* UID Verification */}
+        {/* UID & Game Name */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
           <Card className="border-border/50 bg-card/50 backdrop-blur-md">
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
-                <User className="w-4 h-4 text-primary" /> Step {1 + gameOffset + stepOffset}: Enter {selectedGame?.uid_label || "Game UID"}
+                <User className="w-4 h-4 text-primary" /> Step {1 + gameOffset + stepOffset}: Enter Your Details
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              {/* Show verified name above UID */}
-              {uidVerified && gameName && (
-                <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-                  className="bg-success/10 border border-success/30 rounded-xl p-3 space-y-1">
-                  <div className="flex items-center gap-2 text-success text-sm font-medium">
-                    <CheckCircle className="w-4 h-4" /> UID Verified ✅
-                  </div>
-                  <div className="text-xs text-muted-foreground space-y-0.5">
-                    <p className="flex items-center gap-1.5">
-                      <Gamepad2 className="w-3 h-3 text-primary" />
-                      Game Name: <span className="font-semibold text-primary text-sm">{gameName}</span>
-                    </p>
-                    <p>Player ID: <span className="font-mono text-foreground">{gameUid}</span></p>
-                    {selectedServer && <p>Server: <span className="text-foreground">{selectedServer.flag} {selectedServer.name}</span></p>}
-                    <p>Status: <span className="text-success font-medium">Active ✅</span></p>
-                  </div>
-                </motion.div>
-              )}
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <Input
-                    placeholder={`Enter your ${selectedGame?.uid_label || "Game UID"}...`}
-                    value={gameUid}
-                    onChange={(e) => {
-                      setGameUid(e.target.value);
-                      setUidVerified(false);
-                      setGameName("");
-                      setUidError("");
-                    }}
-                    className="bg-background/50 font-mono pr-8"
-                  />
-                  {gameUid && (
-                    <button
-                      onClick={() => { setGameUid(""); setUidVerified(false); setGameName(""); setUidError(""); }}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground hover:text-destructive px-1.5 py-0.5 rounded bg-muted/50"
-                    >✕</button>
-                  )}
-                </div>
-                <Button
-                  variant={uidVerified ? "outline" : "default"}
-                  onClick={handleVerifyUid}
-                  disabled={verifyLoading || !gameUid.trim()}
-                  className="shrink-0"
-                >
-                  {verifyLoading
-                    ? <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full border-2 border-primary-foreground border-t-transparent animate-spin" />Checking...</span>
-                    : uidVerified ? "✓ Done" : "Verify UID"}
-                </Button>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">
+                  {selectedGame?.uid_label || "Game UID"}
+                </label>
+                <Input
+                  placeholder={`Enter your ${selectedGame?.uid_label || "Game UID"}...`}
+                  value={gameUid}
+                  onChange={(e) => setGameUid(e.target.value)}
+                  className="bg-background/50 font-mono"
+                />
               </div>
-              {uidError && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-                  className="flex items-center gap-2 text-destructive text-sm bg-destructive/10 rounded-xl p-3">
-                  <AlertTriangle className="w-4 h-4 shrink-0" /> {uidError}
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">
+                  {selectedGame?.id_label || "Game Name / Player Name"}
+                </label>
+                <Input
+                  placeholder="Enter your in-game name..."
+                  value={gameName}
+                  onChange={(e) => setGameName(e.target.value)}
+                  className="bg-background/50"
+                />
+              </div>
+              {gameUid && gameName && (
+                <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+                  className="bg-success/10 border border-success/30 rounded-xl p-3 flex items-center gap-2 text-success text-sm">
+                  <CheckCircle className="w-4 h-4" /> Ready — {gameName} ({gameUid})
                 </motion.div>
               )}
             </CardContent>
