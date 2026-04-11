@@ -702,7 +702,7 @@ const Admin = () => {
   const statCards = [
     { label: "Total Users", value: stats.users, icon: Users },
     { label: "Total Sales", value: stats.sales, icon: Package },
-    { label: "Points in System", value: stats.points, icon: Coins },
+    { label: "Credits in System", value: `$${stats.points}`, icon: Coins },
     { label: "Stock Remaining", value: stats.stock, icon: Key },
   ];
 
@@ -765,6 +765,7 @@ const Admin = () => {
             <TabsTrigger value="users">Users</TabsTrigger>
             <TabsTrigger value="keys">Keys</TabsTrigger>
             <TabsTrigger value="transactions">Txns</TabsTrigger>
+            <TabsTrigger value="credits">Credits</TabsTrigger>
             <TabsTrigger value="offers">Offers</TabsTrigger>
             <TabsTrigger value="topup" className="relative" onClick={() => { setPendingNotifCount(0); setShowNotifBell(false); }}>
               Topup
