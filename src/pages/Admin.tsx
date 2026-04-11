@@ -155,9 +155,13 @@ const Admin = () => {
     const { data: tadmins } = await supabase.from("topup_admins").select("*").order("created_at", { ascending: false });
     const { data: gms } = await supabase.from("topup_games").select("*").order("sort_order");
     const { data: sessions } = await supabase.from("chat_sessions").select("*").order("updated_at", { ascending: false });
+    const { data: credPkgs } = await supabase.from("credit_packages" as any).select("*").order("sort_order");
+    const { data: credReqs } = await supabase.from("credit_requests" as any).select("*").order("created_at", { ascending: false });
     setTopupGames(gms || []);
     setChatSessions(sessions || []);
     setUnreadChats((sessions || []).filter((s: any) => s.status === "open").length);
+    setCreditPackages(credPkgs || []);
+    setCreditRequests(credReqs || []);
 
     setProducts(prods || []);
     setTransactions(txns || []);
