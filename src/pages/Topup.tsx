@@ -481,7 +481,7 @@ const Topup = () => {
         )}
 
         {/* QR Code + Upload Proof */}
-        {uidVerified && selectedPkg && (
+        {uidStepComplete && selectedPkg && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
             <Card className="border-border/50 bg-card/50 backdrop-blur-md">
               <CardHeader className="pb-3">
@@ -540,7 +540,7 @@ const Topup = () => {
         )}
 
         {/* Order Summary + Submit (like "Place Order" in screenshot) */}
-        {uidVerified && selectedPkg && (
+        {uidStepComplete && selectedPkg && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
             <Card className="border-primary/30 bg-card/70 backdrop-blur-md shadow-lg">
               <CardContent className="pt-5 space-y-4">
@@ -582,7 +582,7 @@ const Topup = () => {
         )}
 
         {/* Initial CTA when nothing selected yet */}
-        {!uidVerified && !selectedPkg && (
+        {!uidStepComplete && !selectedPkg && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             <p className="text-center text-xs text-muted-foreground">
               Complete all steps above to place your order
