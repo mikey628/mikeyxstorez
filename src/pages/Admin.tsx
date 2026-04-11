@@ -1059,6 +1059,90 @@ const Admin = () => {
             </Card>
           </TabsContent>
 
+          {/* CREDITS TAB */}
+          <TabsContent value="credits" className="space-y-4">
+            <div className="flex gap-2">
+              <Button onClick={() => { setEditCreditPkg(null); setCreditPkgForm({ amount: 0, price: 0, description: "" }); setCreditPkgDialog(true); }}>
+                <Plus className="w-4 h-4 mr-1" /> Add Credit Package
+              </Button>
+            </div>
+
+            {/* Credit Packages */}
+            <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
+              <CardContent className="p-4">
+                <h3 className="font-semibold mb-3">Credit Packages</h3>
+                <div className="space-y-2">
+                  {creditPackages.map((pkg: any) => (
+                    <div key={pkg.id} className="flex items-center justify-between p-3 rounded-lg border border-border/50 bg-background/50">
+                      <div>
+                        <p className="font-bold text-primary">${pkg.amount} Credits</p>
+                        <p className="text-xs text-muted-foreground">Price: ${pkg.price} {pkg.description && `· ${pkg.description}`}</p>
+                      </div>
+                      <div className="flex gap-1">
+                        <Button variant="ghost" size="icon" onClick={() => { setEditCreditPkg(pkg); setCreditPkgForm({ amount: pkg.amount, price: pkg.price, description: pkg.description || "" }); setCreditPkgDialog(true); }}>
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => deleteCreditPackage(pkg.id)}>
+                          <Trash2 className="w-4 h-4 text-destructive" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                  {creditPackages.length === 0 && <p className="text-sm text-muted-foreground">No credit packages yet. Add one above.</p>}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Credit Requests */}
+            <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
+              <CardContent className="p-4">
+                <h3 className="font-semibold mb-3">Credit Purchase Requests</h3>
+                <div className="space-y-2 max-h-96 overflow-y-auto">
+                  {creditRequests.map((req: any) => {
+                    const reqUser = users.find((u: any) => u.user_id === req.user_id);
+                    return (
+                      <div key={req.id} className={`p-3 rounded-lg border text-sm ${
+                        req.status === "approved" ? "border-success/30 bg-success/5" :
+                        req.status === "rejected" ? "border-destructive/30 bg-destructive/5" :
+                        "border-border/50 bg-background/50"
+                      }`}>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="font-medium">{reqUser?.email || req.user_id}</p>
+                            <p className="text-primary font-bold">${req.package_amount} Credits</p>
+                            <p className="text-xs text-muted-foreground">Paid: ${req.amount_paid} · {req.payment_method}</p>
+                            <p className="text-[10px] text-muted-foreground">{new Date(req.created_at).toLocaleString()}</p>
+                          </div>
+                          <div className="flex flex-col items-end gap-1">
+                            <Badge variant={req.status === "approved" ? "default" : req.status === "rejected" ? "destructive" : "outline"} className="capitalize text-[10px]">
+                              {req.status}
+                            </Badge>
+                            {req.status === "pending" && (
+                              <div className="flex gap-1">
+                                <Button size="sm" variant="default" className="h-7 text-xs" onClick={() => handleCreditRequest(req.id, "approved")}>
+                                  <CheckCircle className="w-3 h-3 mr-1" /> Approve
+                                </Button>
+                                <Button size="sm" variant="destructive" className="h-7 text-xs" onClick={() => handleCreditRequest(req.id, "rejected")}>
+                                  <XCircle className="w-3 h-3 mr-1" /> Reject
+                                </Button>
+                              </div>
+                            )}
+                            {req.payment_proof_url && (
+                              <Button size="sm" variant="ghost" className="h-6 text-[10px]" onClick={() => viewProof(req.payment_proof_url)}>
+                                <Eye className="w-3 h-3 mr-1" /> View Proof
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {creditRequests.length === 0 && <p className="text-sm text-muted-foreground">No credit purchase requests yet.</p>}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           {/* OFFERS TAB */}
           <TabsContent value="offers" className="space-y-4">
             <div className="flex gap-2">
