@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import {
   LayoutDashboard, Package, History, ShoppingCart, LogOut,
-  Menu, X, Shield, MoreVertical, Wallet, User, Settings,
+  Menu, X, Shield, MoreVertical, Wallet, User, Settings, CreditCard,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,6 +20,7 @@ import { FloatingRefresh } from "@/components/FloatingRefresh";
 const navKeys = [
   { key: "dashboard", icon: LayoutDashboard, path: "/dashboard" },
   { key: "products", icon: Package, path: "/products" },
+  { key: "buyCredit", icon: CreditCard, path: "/buy-credit" },
   { key: "myKeys", icon: ShoppingCart, path: "/my-keys" },
   { key: "transactions", icon: History, path: "/transactions" },
   { key: "topUp", icon: Wallet, path: "/topup" },
@@ -89,7 +90,7 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium truncate">{profile?.display_name || profile?.email}</p>
-              <p className="text-xs text-muted-foreground">{profile?.wallet_points ?? 0} {t("pts")}</p>
+              <p className="text-xs text-muted-foreground">${profile?.wallet_points ?? 0} Credits</p>
             </div>
           </div>
           <Button variant="ghost" size="sm" className="w-full justify-start text-muted-foreground" onClick={handleLogout}>
@@ -107,8 +108,8 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
           </button>
           <div className="flex items-center gap-2 ml-auto">
             <span className="text-sm text-muted-foreground hidden sm:inline">
-              <Wallet className="inline w-4 h-4 mr-1" />
-              {profile?.wallet_points ?? 0} {t("points")}
+              <CreditCard className="inline w-4 h-4 mr-1" />
+              ${profile?.wallet_points ?? 0} Credits
             </span>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
