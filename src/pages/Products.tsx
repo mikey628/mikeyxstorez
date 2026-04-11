@@ -72,7 +72,7 @@ const Products = () => {
     if (!user || !selectedProduct) return;
     const durationPrice = selectedProduct.duration_prices?.[String(selectedDuration)] || selectedProduct.price_points;
     if ((profile?.wallet_points ?? 0) < durationPrice) {
-      toast.error("Insufficient points!");
+      toast.error("Insufficient credits! Buy more credits first.");
       return;
     }
 
@@ -177,7 +177,7 @@ const Products = () => {
                           const durations = product.duration_days || [30];
                           const minPrice = Math.min(...durations.map((d: number) => prices[String(d)] || product.price_points));
                           const maxPrice = Math.max(...durations.map((d: number) => prices[String(d)] || product.price_points));
-                          return minPrice === maxPrice ? `${minPrice} ${t("pts")}` : `${minPrice}–${maxPrice} ${t("pts")}`;
+                          return minPrice === maxPrice ? `$${minPrice}` : `$${minPrice}–$${maxPrice}`;
                         })()}
                       </div>
                       <Button
@@ -288,10 +288,10 @@ const Products = () => {
                                 disabled={!hasStock}
                                 className={`flex flex-col h-auto py-2 px-3 ${selectedDuration === d ? "shadow-md shadow-primary/30" : ""}`}
                               >
-                                <span>{d}d · {dPrice}{t("pts")}</span>
+                                <span>{d}d · ${dPrice}</span>
                                 <span className={`text-[10px] mt-0.5 ${hasStock ? "text-green-400" : "text-destructive"}`}>
                                   <Key className="w-2.5 h-2.5 inline mr-0.5" />
-                                  {stock} {t("keysAvailable")}
+                                  {stock} keys
                                 </span>
                               </Button>
                             </motion.div>
@@ -302,9 +302,9 @@ const Products = () => {
                     <div className="space-y-2 text-sm">
                       <div className="flex justify-between"><span className="text-muted-foreground">Product:</span><span>{selectedProduct?.name}</span></div>
                       <div className="flex justify-between"><span className="text-muted-foreground">Duration:</span><span className="text-primary font-medium">{selectedDuration} {t("days")}</span></div>
-                      <div className="flex justify-between"><span className="text-muted-foreground">Price:</span><span className="font-bold text-primary">{selectedProduct?.duration_prices?.[String(selectedDuration)] || selectedProduct?.price_points} {t("pts")}</span></div>
-                      <div className="flex justify-between"><span className="text-muted-foreground">Your Balance:</span><span>{profile?.wallet_points ?? 0} {t("pts")}</span></div>
-                      <div className="flex justify-between font-medium"><span>After Purchase:</span><span>{(profile?.wallet_points ?? 0) - (selectedProduct?.duration_prices?.[String(selectedDuration)] || (selectedProduct?.price_points ?? 0))} {t("pts")}</span></div>
+                      <div className="flex justify-between"><span className="text-muted-foreground">Price:</span><span className="font-bold text-primary">${selectedProduct?.duration_prices?.[String(selectedDuration)] || selectedProduct?.price_points}</span></div>
+                      <div className="flex justify-between"><span className="text-muted-foreground">Your Balance:</span><span>${profile?.wallet_points ?? 0}</span></div>
+                      <div className="flex justify-between font-medium"><span>After Purchase:</span><span>${(profile?.wallet_points ?? 0) - (selectedProduct?.duration_prices?.[String(selectedDuration)] || (selectedProduct?.price_points ?? 0))}</span></div>
                     </div>
                   </div>
                   <DialogFooter>
