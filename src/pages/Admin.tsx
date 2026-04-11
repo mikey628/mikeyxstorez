@@ -709,6 +709,49 @@ const Admin = () => {
   };
 
 
+  // Credit package CRUD
+  const saveCreditPackage = async () => {
+    if (!creditPkgForm.amount || !creditPkgForm.price) { toast.error("Fill amount and price"); return; }
+    const payload = { amount: creditPkgForm.amount, price: creditPkgForm.price, description: creditPkgForm.description };
+    if (editCreditPkg) {
+      await supabase.from("credit_packages" as any).update(payload).eq("id", editCreditPkg.id);
+      toast.success("Credit package updated");
+    } else {
+      await supabase.from("credit_packages" as any).insert(payload);
+      toast.success("Credit package added");
+    }
+    setCreditPkgDialog(false);
+    setEditCreditPkg(null);
+    setCreditPkgForm({ amount: 0, price: 0, description: "" });
+    fetchAll();
+  };
+
+  const deleteCreditPackage = async (id: string) => {
+    await supabase.from("credit_packages" as any).delete().eq("id", id);
+    toast.success("Credit package deleted");
+    fetchAll();
+  };
+
+  const handleCreditRequest = async (reqId: string, action: "approved" | "rejected") => {
+    const req = creditRequests.find((r: any) => r.id === reqId);
+    if (!req) return;
+    await supabase.from("credit_requests" as any).update({ status: action }).eq("id", reqId);
+    if (action === "approved" && req.user_id) {
+      // Add credits to user wallet
+      const { data: userProfile } = await supabase.from("profiles").select("wallet_points").eq("user_id", req.user_id).single();
+      if (userProfile) {
+        await supabase.from("profiles").update({ wallet_points: (userProfile.wallet_points || 0) + Number(req.package_amount) }).eq("user_id", req.user_id);
+        await supabase.from("transactions").insert({
+          user_id: req.user_id,
+          type: "credit_added",
+          amount: Number(req.package_amount),
+          description: `Credit purchase approved ($${req.package_amount})`,
+        });
+      }
+    }
+    toast.success(`Request ${action}`);
+    fetchAll();
+  };
 
   const statCards = [
     { label: "Total Users", value: stats.users, icon: Users },
