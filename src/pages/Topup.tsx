@@ -38,9 +38,6 @@ const Topup = () => {
   const [selectedServer, setSelectedServer] = useState<any>(saved?.selectedServer || null);
   const [gameUid, setGameUid] = useState(saved?.gameUid || "");
   const [gameName, setGameName] = useState(saved?.gameName || "");
-  const [uidVerified, setUidVerified] = useState(saved?.uidVerified || false);
-  const [verifyLoading, setVerifyLoading] = useState(false);
-  const [uidError, setUidError] = useState("");
 
   const [proofFile, setProofFile] = useState<File | null>(null);
   const [proofPreview, setProofPreview] = useState<string | null>(null);
@@ -53,8 +50,8 @@ const Topup = () => {
   const [topupHistory, setTopupHistory] = useState<any[]>([]);
 
   useEffect(() => {
-    saveState({ selectedGame, selectedPkg, selectedServer, gameUid, gameName, uidVerified });
-  }, [selectedGame, selectedPkg, selectedServer, gameUid, gameName, uidVerified]);
+    saveState({ selectedGame, selectedPkg, selectedServer, gameUid, gameName });
+  }, [selectedGame, selectedPkg, selectedServer, gameUid, gameName]);
 
   // Auto-save draft when user selects a package
   useEffect(() => {
@@ -129,32 +126,8 @@ const Topup = () => {
     ? packages.filter(p => p.game_id === selectedGame.id)
     : packages;
 
-  const handleVerifyUid = async () => {
-    if (!gameUid.trim()) { toast.error("Enter your Game UID"); return; }
-    if (servers.length > 0 && !selectedServer) { toast.error("Select a server first"); return; }
-    setVerifyLoading(true);
-    setUidError("");
-    setGameName("");
-    setUidVerified(false);
-    try {
-      const { data, error } = await supabase.functions.invoke("verify-ff-uid", {
-        body: { uid: gameUid.trim() },
-      });
-      if (error || data?.error) {
-        const msg = data?.error || "Invalid UID. Please check and try again.";
-        setUidError(msg);
-        toast.error(msg);
-      } else {
-        setGameName(data.nickname);
-        setUidVerified(true);
-        toast.success(`✅ UID Verified! Game name: ${data.nickname}`);
-      }
-    } catch {
-      setUidError("Failed to verify UID. Please try again.");
-      toast.error("Failed to verify UID.");
-    }
-    setVerifyLoading(false);
-  };
+  // Check if UID step is complete
+  const uidStepComplete = gameUid.trim().length > 0 && gameName.trim().length > 0;
 
   const handleProofChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -188,7 +161,7 @@ const Topup = () => {
   const handleSubmit = async () => {
     if (!selectedPkg) { toast.error("Select a package"); return; }
     if (servers.length > 0 && !selectedServer) { toast.error("Select a server"); return; }
-    if (!uidVerified || !gameUid.trim()) { toast.error("Verify your UID first"); return; }
+    if (!gameUid.trim() || !gameName.trim()) { toast.error("Enter your UID and Game Name"); return; }
     if (paymentMethods.length > 0 && !selectedPayment) { toast.error("Select a payment method"); return; }
     if (paymentMethods.length > 0 && !proofFile) { toast.error("Upload payment proof screenshot"); return; }
 
@@ -259,9 +232,9 @@ const Topup = () => {
 
   const reset = () => {
     setSubmitted(false); setSelectedPkg(null); setSelectedServer(null);
-    setGameUid(""); setGameName(""); setUidVerified(false);
+    setGameUid(""); setGameName("");
     setProofFile(null); setProofPreview(null); setFakeWarning(false);
-    setSelectedGame(null); setUidError("");
+    setSelectedGame(null);
     localStorage.removeItem(STORAGE_KEY);
   };
 
@@ -366,7 +339,7 @@ const Topup = () => {
               <CardContent className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {servers.map((srv) => (
                   <motion.button key={srv.id} whileTap={{ scale: 0.95 }}
-                    onClick={() => { setSelectedServer(srv); setUidVerified(false); setGameName(""); }}
+                    onClick={() => { setSelectedServer(srv); setGameName(""); }}
                     className={`p-3 rounded-xl border-2 transition-all text-center ${
                       selectedServer?.id === srv.id ? "border-primary bg-primary/10" : "border-border/50 bg-background/50 hover:border-primary/50"
                     }`}>
@@ -382,68 +355,41 @@ const Topup = () => {
           </motion.div>
         )}
 
-        {/* UID Verification */}
+        {/* UID & Game Name */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
           <Card className="border-border/50 bg-card/50 backdrop-blur-md">
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
-                <User className="w-4 h-4 text-primary" /> Step {1 + gameOffset + stepOffset}: Enter {selectedGame?.uid_label || "Game UID"}
+                <User className="w-4 h-4 text-primary" /> Step {1 + gameOffset + stepOffset}: Enter Your Details
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              {/* Show verified name above UID */}
-              {uidVerified && gameName && (
-                <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-                  className="bg-success/10 border border-success/30 rounded-xl p-3 space-y-1">
-                  <div className="flex items-center gap-2 text-success text-sm font-medium">
-                    <CheckCircle className="w-4 h-4" /> UID Verified ✅
-                  </div>
-                  <div className="text-xs text-muted-foreground space-y-0.5">
-                    <p className="flex items-center gap-1.5">
-                      <Gamepad2 className="w-3 h-3 text-primary" />
-                      Game Name: <span className="font-semibold text-primary text-sm">{gameName}</span>
-                    </p>
-                    <p>Player ID: <span className="font-mono text-foreground">{gameUid}</span></p>
-                    {selectedServer && <p>Server: <span className="text-foreground">{selectedServer.flag} {selectedServer.name}</span></p>}
-                    <p>Status: <span className="text-success font-medium">Active ✅</span></p>
-                  </div>
-                </motion.div>
-              )}
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <Input
-                    placeholder={`Enter your ${selectedGame?.uid_label || "Game UID"}...`}
-                    value={gameUid}
-                    onChange={(e) => {
-                      setGameUid(e.target.value);
-                      setUidVerified(false);
-                      setGameName("");
-                      setUidError("");
-                    }}
-                    className="bg-background/50 font-mono pr-8"
-                  />
-                  {gameUid && (
-                    <button
-                      onClick={() => { setGameUid(""); setUidVerified(false); setGameName(""); setUidError(""); }}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground hover:text-destructive px-1.5 py-0.5 rounded bg-muted/50"
-                    >✕</button>
-                  )}
-                </div>
-                <Button
-                  variant={uidVerified ? "outline" : "default"}
-                  onClick={handleVerifyUid}
-                  disabled={verifyLoading || !gameUid.trim()}
-                  className="shrink-0"
-                >
-                  {verifyLoading
-                    ? <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full border-2 border-primary-foreground border-t-transparent animate-spin" />Checking...</span>
-                    : uidVerified ? "✓ Done" : "Verify UID"}
-                </Button>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">
+                  {selectedGame?.uid_label || "Game UID"}
+                </label>
+                <Input
+                  placeholder={`Enter your ${selectedGame?.uid_label || "Game UID"}...`}
+                  value={gameUid}
+                  onChange={(e) => setGameUid(e.target.value)}
+                  className="bg-background/50 font-mono"
+                />
               </div>
-              {uidError && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-                  className="flex items-center gap-2 text-destructive text-sm bg-destructive/10 rounded-xl p-3">
-                  <AlertTriangle className="w-4 h-4 shrink-0" /> {uidError}
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">
+                  {selectedGame?.id_label || "Game Name / Player Name"}
+                </label>
+                <Input
+                  placeholder="Enter your in-game name..."
+                  value={gameName}
+                  onChange={(e) => setGameName(e.target.value)}
+                  className="bg-background/50"
+                />
+              </div>
+              {gameUid && gameName && (
+                <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+                  className="bg-success/10 border border-success/30 rounded-xl p-3 flex items-center gap-2 text-success text-sm">
+                  <CheckCircle className="w-4 h-4" /> Ready — {gameName} ({gameUid})
                 </motion.div>
               )}
             </CardContent>
@@ -535,7 +481,7 @@ const Topup = () => {
         )}
 
         {/* QR Code + Upload Proof */}
-        {uidVerified && selectedPkg && (
+        {uidStepComplete && selectedPkg && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
             <Card className="border-border/50 bg-card/50 backdrop-blur-md">
               <CardHeader className="pb-3">
@@ -594,7 +540,7 @@ const Topup = () => {
         )}
 
         {/* Order Summary + Submit (like "Place Order" in screenshot) */}
-        {uidVerified && selectedPkg && (
+        {uidStepComplete && selectedPkg && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
             <Card className="border-primary/30 bg-card/70 backdrop-blur-md shadow-lg">
               <CardContent className="pt-5 space-y-4">
@@ -636,7 +582,7 @@ const Topup = () => {
         )}
 
         {/* Initial CTA when nothing selected yet */}
-        {!uidVerified && !selectedPkg && (
+        {!uidStepComplete && !selectedPkg && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             <p className="text-center text-xs text-muted-foreground">
               Complete all steps above to place your order
