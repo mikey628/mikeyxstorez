@@ -100,6 +100,19 @@ const Admin = () => {
   const [editCreditPkg, setEditCreditPkg] = useState<any>(null);
   const [creditPkgForm, setCreditPkgForm] = useState({ amount: 0, price: 0, description: "" });
 
+  // Reseller management
+  const [resellerApps, setResellerApps] = useState<any[]>([]);
+  const [resellerProducts, setResellerProducts] = useState<any[]>([]);
+  const [resellerKeys, setResellerKeys] = useState<any[]>([]);
+  const [resellerProdDialog, setResellerProdDialog] = useState(false);
+  const [editResellerProd, setEditResellerProd] = useState<any>(null);
+  const [resellerProdForm, setResellerProdForm] = useState({ name: "", description: "", price_credits: 0, duration_days: "30" });
+  const [resellerKeyDialog, setResellerKeyDialog] = useState(false);
+  const [resellerKeyProductId, setResellerKeyProductId] = useState("");
+  const [resellerKeysInput, setResellerKeysInput] = useState("");
+  const [resellerKeyDuration, setResellerKeyDuration] = useState<number>(30);
+  const [resellerKeyPrice, setResellerKeyPrice] = useState<number>(0);
+
   // Product dialog
   const [productDialog, setProductDialog] = useState(false);
   const [editProduct, setEditProduct] = useState<any>(null);
@@ -157,11 +170,17 @@ const Admin = () => {
     const { data: sessions } = await supabase.from("chat_sessions").select("*").order("updated_at", { ascending: false });
     const { data: credPkgs } = await supabase.from("credit_packages" as any).select("*").order("sort_order");
     const { data: credReqs } = await supabase.from("credit_requests" as any).select("*").order("created_at", { ascending: false });
+    const { data: rApps } = await supabase.from("reseller_applications" as any).select("*").order("created_at", { ascending: false });
+    const { data: rProds } = await supabase.from("reseller_products" as any).select("*").order("created_at");
+    const { data: rKeys } = await supabase.from("reseller_keys" as any).select("*, reseller_products(name)").order("created_at", { ascending: false });
     setTopupGames(gms || []);
     setChatSessions(sessions || []);
     setUnreadChats((sessions || []).filter((s: any) => s.status === "open").length);
     setCreditPackages(credPkgs || []);
     setCreditRequests(credReqs || []);
+    setResellerApps(rApps || []);
+    setResellerProducts(rProds || []);
+    setResellerKeys(rKeys || []);
 
     setProducts(prods || []);
     setTransactions(txns || []);
@@ -837,6 +856,7 @@ const Admin = () => {
                 </span>
               )}
             </TabsTrigger>
+            <TabsTrigger value="reseller">Reseller</TabsTrigger>
             <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
 
@@ -972,6 +992,111 @@ const Admin = () => {
                 </Card>
               ))}
             </div>
+          </TabsContent>
+
+          {/* RESELLER TAB */}
+          <TabsContent value="reseller" className="space-y-4">
+            <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
+              <CardContent className="p-4 space-y-3">
+                <h3 className="font-bold flex items-center gap-2"><Users className="w-4 h-4" /> Reseller Applications ({resellerApps.length})</h3>
+                {resellerApps.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No applications yet.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {resellerApps.map((app: any) => (
+                      <div key={app.id} className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 bg-background/50 rounded-lg border border-border/30">
+                        <div className="flex-1 space-y-1">
+                          <p className="font-medium">{app.seller_name}</p>
+                          <p className="text-xs text-muted-foreground">WhatsApp: {app.whatsapp}</p>
+                          {app.tiktok_channel && <p className="text-xs text-muted-foreground">TikTok: {app.tiktok_channel}</p>}
+                          {app.avg_followers && <p className="text-xs text-muted-foreground">Followers: {app.avg_followers}</p>}
+                          <Badge variant={app.status === "approved" ? "default" : app.status === "rejected" ? "destructive" : "secondary"} className="text-[10px]">
+                            {app.status}
+                          </Badge>
+                        </div>
+                        {app.status === "pending" && (
+                          <div className="flex gap-1">
+                            <Button size="sm" variant="default" onClick={async () => {
+                              await supabase.from("reseller_applications" as any).update({ status: "approved" }).eq("id", app.id);
+                              toast.success("Approved!"); fetchAll();
+                            }}><CheckCircle className="w-3 h-3 mr-1" /> Approve</Button>
+                            <Button size="sm" variant="destructive" onClick={async () => {
+                              const note = prompt("Rejection reason (optional):");
+                              await supabase.from("reseller_applications" as any).update({ status: "rejected", admin_note: note || null }).eq("id", app.id);
+                              toast.success("Rejected"); fetchAll();
+                            }}><XCircle className="w-3 h-3 mr-1" /> Reject</Button>
+                          </div>
+                        )}
+                        {app.status === "approved" && (
+                          <Button size="sm" variant="outline" onClick={async () => {
+                            await supabase.from("reseller_applications" as any).update({ status: "rejected" }).eq("id", app.id);
+                            toast.success("Access revoked"); fetchAll();
+                          }}>Revoke</Button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
+              <CardContent className="p-4 space-y-3">
+                <div className="flex justify-between items-center">
+                  <h3 className="font-bold flex items-center gap-2"><Package className="w-4 h-4" /> Reseller Products ({resellerProducts.length})</h3>
+                  <Button size="sm" onClick={() => { setEditResellerProd(null); setResellerProdForm({ name: "", description: "", price_credits: 0, duration_days: "30" }); setResellerProdDialog(true); }}>
+                    <Plus className="w-3 h-3 mr-1" /> Add Product
+                  </Button>
+                </div>
+                {resellerProducts.map((p: any) => (
+                  <div key={p.id} className="flex items-center justify-between p-3 bg-background/50 rounded-lg border border-border/30">
+                    <div>
+                      <p className="font-medium">{p.name}</p>
+                      <p className="text-xs text-muted-foreground">${p.price_credits} · {(p.duration_days || [30]).join(",")}d · Stock: {p.stock}</p>
+                    </div>
+                    <div className="flex gap-1">
+                      <Button size="icon" variant="ghost" onClick={() => {
+                        setEditResellerProd(p);
+                        setResellerProdForm({ name: p.name, description: p.description || "", price_credits: p.price_credits, duration_days: (p.duration_days || [30]).join(",") });
+                        setResellerProdDialog(true);
+                      }}><Edit className="w-3 h-3" /></Button>
+                      <Button size="icon" variant="ghost" className="text-destructive" onClick={async () => {
+                        await supabase.from("reseller_products" as any).delete().eq("id", p.id);
+                        toast.success("Deleted"); fetchAll();
+                      }}><Trash2 className="w-3 h-3" /></Button>
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+
+            <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
+              <CardContent className="p-4 space-y-3">
+                <div className="flex justify-between items-center">
+                  <h3 className="font-bold flex items-center gap-2"><Key className="w-4 h-4" /> Reseller Keys ({resellerKeys.length})</h3>
+                  <Button size="sm" onClick={() => { setResellerKeyProductId(resellerProducts[0]?.id || ""); setResellerKeysInput(""); setResellerKeyDuration(30); setResellerKeyPrice(0); setResellerKeyDialog(true); }}>
+                    <Plus className="w-3 h-3 mr-1" /> Add Keys
+                  </Button>
+                </div>
+                <div className="max-h-60 overflow-y-auto space-y-1">
+                  {resellerKeys.slice(0, 50).map((k: any) => (
+                    <div key={k.id} className="flex items-center justify-between p-2 text-xs bg-background/50 rounded border border-border/30">
+                      <span className="font-mono truncate max-w-[200px]">{k.key_code}</span>
+                      <div className="flex items-center gap-2">
+                        <span>{k.duration_days}d</span>
+                        <Badge variant={k.is_used ? "secondary" : "default"} className="text-[10px]">{k.is_used ? "Used" : "Available"}</Badge>
+                        {!k.is_used && (
+                          <Button size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={async () => {
+                            await supabase.from("reseller_keys" as any).delete().eq("id", k.id);
+                            toast.success("Deleted"); fetchAll();
+                          }}><Trash2 className="w-3 h-3" /></Button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* SETTINGS TAB */}
@@ -1984,6 +2109,91 @@ const Admin = () => {
             <DialogFooter>
               <Button variant="outline" onClick={() => setCreditPkgDialog(false)}>Cancel</Button>
               <Button onClick={saveCreditPackage}>Save</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Reseller Product Dialog */}
+        <Dialog open={resellerProdDialog} onOpenChange={setResellerProdDialog}>
+          <DialogContent className="bg-card/95 backdrop-blur-xl">
+            <DialogHeader>
+              <DialogTitle>{editResellerProd ? "Edit Reseller Product" : "Add Reseller Product"}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Product Name</label>
+                <Input value={resellerProdForm.name} onChange={e => setResellerProdForm({ ...resellerProdForm, name: e.target.value })} className="bg-background/50" />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Description</label>
+                <Input value={resellerProdForm.description} onChange={e => setResellerProdForm({ ...resellerProdForm, description: e.target.value })} className="bg-background/50" />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Price ($ Credits)</label>
+                <Input type="number" value={resellerProdForm.price_credits || ""} onChange={e => setResellerProdForm({ ...resellerProdForm, price_credits: Number(e.target.value) })} className="bg-background/50" />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Duration Days (comma separated)</label>
+                <Input value={resellerProdForm.duration_days} onChange={e => setResellerProdForm({ ...resellerProdForm, duration_days: e.target.value })} className="bg-background/50" placeholder="7,30" />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setResellerProdDialog(false)}>Cancel</Button>
+              <Button onClick={async () => {
+                const durations = resellerProdForm.duration_days.split(",").map(Number).filter(Boolean);
+                const payload = {
+                  name: resellerProdForm.name,
+                  description: resellerProdForm.description || null,
+                  price_credits: resellerProdForm.price_credits,
+                  duration_days: durations.length ? durations : [30],
+                };
+                if (editResellerProd) {
+                  await supabase.from("reseller_products" as any).update(payload).eq("id", editResellerProd.id);
+                } else {
+                  await supabase.from("reseller_products" as any).insert(payload);
+                }
+                toast.success("Saved!"); setResellerProdDialog(false); fetchAll();
+              }}>Save</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Reseller Key Dialog */}
+        <Dialog open={resellerKeyDialog} onOpenChange={setResellerKeyDialog}>
+          <DialogContent className="bg-card/95 backdrop-blur-xl">
+            <DialogHeader>
+              <DialogTitle>Add Reseller Keys</DialogTitle>
+              <DialogDescription>One key per line. Select product and duration.</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Product</label>
+                <select className="w-full p-2 rounded bg-background/50 border border-border text-sm" value={resellerKeyProductId} onChange={e => setResellerKeyProductId(e.target.value)}>
+                  {resellerProducts.map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Duration (days)</label>
+                <Input type="number" value={resellerKeyDuration} onChange={e => setResellerKeyDuration(Number(e.target.value))} className="bg-background/50" />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Keys (one per line)</label>
+                <textarea className="w-full p-2 rounded bg-background/50 border border-border text-sm font-mono min-h-[120px]" value={resellerKeysInput} onChange={e => setResellerKeysInput(e.target.value)} placeholder="KEY-001&#10;KEY-002&#10;KEY-003" />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setResellerKeyDialog(false)}>Cancel</Button>
+              <Button onClick={async () => {
+                const lines = resellerKeysInput.split("\n").map(l => l.trim()).filter(Boolean);
+                if (!lines.length || !resellerKeyProductId) { toast.error("Enter keys and select product"); return; }
+                const rows = lines.map(k => ({ key_code: k, product_id: resellerKeyProductId, duration_days: resellerKeyDuration }));
+                const { error } = await supabase.from("reseller_keys" as any).insert(rows);
+                if (error) { toast.error(error.message); return; }
+                // Update stock count
+                const { count } = await supabase.from("reseller_keys" as any).select("*", { count: "exact", head: true }).eq("product_id", resellerKeyProductId).eq("is_used", false);
+                await supabase.from("reseller_products" as any).update({ stock: count || 0 }).eq("id", resellerKeyProductId);
+                toast.success(`${lines.length} keys added!`); setResellerKeyDialog(false); fetchAll();
+              }}>Add Keys</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

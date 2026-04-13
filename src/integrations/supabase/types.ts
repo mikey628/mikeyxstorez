@@ -341,6 +341,125 @@ export type Database = {
         }
         Relationships: []
       }
+      reseller_applications: {
+        Row: {
+          admin_note: string | null
+          avg_followers: string | null
+          created_at: string
+          id: string
+          seller_name: string
+          status: string
+          tiktok_channel: string | null
+          updated_at: string
+          user_id: string
+          whatsapp: string
+        }
+        Insert: {
+          admin_note?: string | null
+          avg_followers?: string | null
+          created_at?: string
+          id?: string
+          seller_name: string
+          status?: string
+          tiktok_channel?: string | null
+          updated_at?: string
+          user_id: string
+          whatsapp: string
+        }
+        Update: {
+          admin_note?: string | null
+          avg_followers?: string | null
+          created_at?: string
+          id?: string
+          seller_name?: string
+          status?: string
+          tiktok_channel?: string | null
+          updated_at?: string
+          user_id?: string
+          whatsapp?: string
+        }
+        Relationships: []
+      }
+      reseller_keys: {
+        Row: {
+          created_at: string
+          duration_days: number | null
+          id: string
+          is_used: boolean
+          key_code: string
+          product_id: string
+          used_at: string | null
+          used_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          duration_days?: number | null
+          id?: string
+          is_used?: boolean
+          key_code: string
+          product_id: string
+          used_at?: string | null
+          used_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          duration_days?: number | null
+          id?: string
+          is_used?: boolean
+          key_code?: string
+          product_id?: string
+          used_at?: string | null
+          used_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reseller_keys_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "reseller_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reseller_products: {
+        Row: {
+          created_at: string
+          description: string | null
+          duration_days: number[] | null
+          duration_prices: Json | null
+          id: string
+          is_active: boolean
+          name: string
+          price_credits: number
+          stock: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          duration_days?: number[] | null
+          duration_prices?: Json | null
+          id?: string
+          is_active?: boolean
+          name: string
+          price_credits?: number
+          stock?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          duration_days?: number[] | null
+          duration_prices?: Json | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          price_credits?: number
+          stock?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       site_settings: {
         Row: {
           id: string
