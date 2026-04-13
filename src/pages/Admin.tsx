@@ -994,6 +994,111 @@ const Admin = () => {
             </div>
           </TabsContent>
 
+          {/* RESELLER TAB */}
+          <TabsContent value="reseller" className="space-y-4">
+            <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
+              <CardContent className="p-4 space-y-3">
+                <h3 className="font-bold flex items-center gap-2"><Users className="w-4 h-4" /> Reseller Applications ({resellerApps.length})</h3>
+                {resellerApps.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No applications yet.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {resellerApps.map((app: any) => (
+                      <div key={app.id} className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 bg-background/50 rounded-lg border border-border/30">
+                        <div className="flex-1 space-y-1">
+                          <p className="font-medium">{app.seller_name}</p>
+                          <p className="text-xs text-muted-foreground">WhatsApp: {app.whatsapp}</p>
+                          {app.tiktok_channel && <p className="text-xs text-muted-foreground">TikTok: {app.tiktok_channel}</p>}
+                          {app.avg_followers && <p className="text-xs text-muted-foreground">Followers: {app.avg_followers}</p>}
+                          <Badge variant={app.status === "approved" ? "default" : app.status === "rejected" ? "destructive" : "secondary"} className="text-[10px]">
+                            {app.status}
+                          </Badge>
+                        </div>
+                        {app.status === "pending" && (
+                          <div className="flex gap-1">
+                            <Button size="sm" variant="default" onClick={async () => {
+                              await supabase.from("reseller_applications" as any).update({ status: "approved" }).eq("id", app.id);
+                              toast.success("Approved!"); fetchAll();
+                            }}><CheckCircle className="w-3 h-3 mr-1" /> Approve</Button>
+                            <Button size="sm" variant="destructive" onClick={async () => {
+                              const note = prompt("Rejection reason (optional):");
+                              await supabase.from("reseller_applications" as any).update({ status: "rejected", admin_note: note || null }).eq("id", app.id);
+                              toast.success("Rejected"); fetchAll();
+                            }}><XCircle className="w-3 h-3 mr-1" /> Reject</Button>
+                          </div>
+                        )}
+                        {app.status === "approved" && (
+                          <Button size="sm" variant="outline" onClick={async () => {
+                            await supabase.from("reseller_applications" as any).update({ status: "rejected" }).eq("id", app.id);
+                            toast.success("Access revoked"); fetchAll();
+                          }}>Revoke</Button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
+              <CardContent className="p-4 space-y-3">
+                <div className="flex justify-between items-center">
+                  <h3 className="font-bold flex items-center gap-2"><Package className="w-4 h-4" /> Reseller Products ({resellerProducts.length})</h3>
+                  <Button size="sm" onClick={() => { setEditResellerProd(null); setResellerProdForm({ name: "", description: "", price_credits: 0, duration_days: "30" }); setResellerProdDialog(true); }}>
+                    <Plus className="w-3 h-3 mr-1" /> Add Product
+                  </Button>
+                </div>
+                {resellerProducts.map((p: any) => (
+                  <div key={p.id} className="flex items-center justify-between p-3 bg-background/50 rounded-lg border border-border/30">
+                    <div>
+                      <p className="font-medium">{p.name}</p>
+                      <p className="text-xs text-muted-foreground">${p.price_credits} · {(p.duration_days || [30]).join(",")}d · Stock: {p.stock}</p>
+                    </div>
+                    <div className="flex gap-1">
+                      <Button size="icon" variant="ghost" onClick={() => {
+                        setEditResellerProd(p);
+                        setResellerProdForm({ name: p.name, description: p.description || "", price_credits: p.price_credits, duration_days: (p.duration_days || [30]).join(",") });
+                        setResellerProdDialog(true);
+                      }}><Edit className="w-3 h-3" /></Button>
+                      <Button size="icon" variant="ghost" className="text-destructive" onClick={async () => {
+                        await supabase.from("reseller_products" as any).delete().eq("id", p.id);
+                        toast.success("Deleted"); fetchAll();
+                      }}><Trash2 className="w-3 h-3" /></Button>
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+
+            <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
+              <CardContent className="p-4 space-y-3">
+                <div className="flex justify-between items-center">
+                  <h3 className="font-bold flex items-center gap-2"><Key className="w-4 h-4" /> Reseller Keys ({resellerKeys.length})</h3>
+                  <Button size="sm" onClick={() => { setResellerKeyProductId(resellerProducts[0]?.id || ""); setResellerKeysInput(""); setResellerKeyDuration(30); setResellerKeyPrice(0); setResellerKeyDialog(true); }}>
+                    <Plus className="w-3 h-3 mr-1" /> Add Keys
+                  </Button>
+                </div>
+                <div className="max-h-60 overflow-y-auto space-y-1">
+                  {resellerKeys.slice(0, 50).map((k: any) => (
+                    <div key={k.id} className="flex items-center justify-between p-2 text-xs bg-background/50 rounded border border-border/30">
+                      <span className="font-mono truncate max-w-[200px]">{k.key_code}</span>
+                      <div className="flex items-center gap-2">
+                        <span>{k.duration_days}d</span>
+                        <Badge variant={k.is_used ? "secondary" : "default"} className="text-[10px]">{k.is_used ? "Used" : "Available"}</Badge>
+                        {!k.is_used && (
+                          <Button size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={async () => {
+                            await supabase.from("reseller_keys" as any).delete().eq("id", k.id);
+                            toast.success("Deleted"); fetchAll();
+                          }}><Trash2 className="w-3 h-3" /></Button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           {/* SETTINGS TAB */}
           <TabsContent value="settings" className="space-y-4">
             <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
