@@ -100,6 +100,19 @@ const Admin = () => {
   const [editCreditPkg, setEditCreditPkg] = useState<any>(null);
   const [creditPkgForm, setCreditPkgForm] = useState({ amount: 0, price: 0, description: "" });
 
+  // Reseller management
+  const [resellerApps, setResellerApps] = useState<any[]>([]);
+  const [resellerProducts, setResellerProducts] = useState<any[]>([]);
+  const [resellerKeys, setResellerKeys] = useState<any[]>([]);
+  const [resellerProdDialog, setResellerProdDialog] = useState(false);
+  const [editResellerProd, setEditResellerProd] = useState<any>(null);
+  const [resellerProdForm, setResellerProdForm] = useState({ name: "", description: "", price_credits: 0, duration_days: "30" });
+  const [resellerKeyDialog, setResellerKeyDialog] = useState(false);
+  const [resellerKeyProductId, setResellerKeyProductId] = useState("");
+  const [resellerKeysInput, setResellerKeysInput] = useState("");
+  const [resellerKeyDuration, setResellerKeyDuration] = useState<number>(30);
+  const [resellerKeyPrice, setResellerKeyPrice] = useState<number>(0);
+
   // Product dialog
   const [productDialog, setProductDialog] = useState(false);
   const [editProduct, setEditProduct] = useState<any>(null);
