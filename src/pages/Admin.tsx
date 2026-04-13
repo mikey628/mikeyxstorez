@@ -856,6 +856,7 @@ const Admin = () => {
                 </span>
               )}
             </TabsTrigger>
+            <TabsTrigger value="reseller">Reseller</TabsTrigger>
             <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
 
