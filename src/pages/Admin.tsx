@@ -170,11 +170,17 @@ const Admin = () => {
     const { data: sessions } = await supabase.from("chat_sessions").select("*").order("updated_at", { ascending: false });
     const { data: credPkgs } = await supabase.from("credit_packages" as any).select("*").order("sort_order");
     const { data: credReqs } = await supabase.from("credit_requests" as any).select("*").order("created_at", { ascending: false });
+    const { data: rApps } = await supabase.from("reseller_applications" as any).select("*").order("created_at", { ascending: false });
+    const { data: rProds } = await supabase.from("reseller_products" as any).select("*").order("created_at");
+    const { data: rKeys } = await supabase.from("reseller_keys" as any).select("*, reseller_products(name)").order("created_at", { ascending: false });
     setTopupGames(gms || []);
     setChatSessions(sessions || []);
     setUnreadChats((sessions || []).filter((s: any) => s.status === "open").length);
     setCreditPackages(credPkgs || []);
     setCreditRequests(credReqs || []);
+    setResellerApps(rApps || []);
+    setResellerProducts(rProds || []);
+    setResellerKeys(rKeys || []);
 
     setProducts(prods || []);
     setTransactions(txns || []);
