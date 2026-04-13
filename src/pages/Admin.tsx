@@ -2112,6 +2112,91 @@ const Admin = () => {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Reseller Product Dialog */}
+        <Dialog open={resellerProdDialog} onOpenChange={setResellerProdDialog}>
+          <DialogContent className="bg-card/95 backdrop-blur-xl">
+            <DialogHeader>
+              <DialogTitle>{editResellerProd ? "Edit Reseller Product" : "Add Reseller Product"}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Product Name</label>
+                <Input value={resellerProdForm.name} onChange={e => setResellerProdForm({ ...resellerProdForm, name: e.target.value })} className="bg-background/50" />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Description</label>
+                <Input value={resellerProdForm.description} onChange={e => setResellerProdForm({ ...resellerProdForm, description: e.target.value })} className="bg-background/50" />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Price ($ Credits)</label>
+                <Input type="number" value={resellerProdForm.price_credits || ""} onChange={e => setResellerProdForm({ ...resellerProdForm, price_credits: Number(e.target.value) })} className="bg-background/50" />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Duration Days (comma separated)</label>
+                <Input value={resellerProdForm.duration_days} onChange={e => setResellerProdForm({ ...resellerProdForm, duration_days: e.target.value })} className="bg-background/50" placeholder="7,30" />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setResellerProdDialog(false)}>Cancel</Button>
+              <Button onClick={async () => {
+                const durations = resellerProdForm.duration_days.split(",").map(Number).filter(Boolean);
+                const payload = {
+                  name: resellerProdForm.name,
+                  description: resellerProdForm.description || null,
+                  price_credits: resellerProdForm.price_credits,
+                  duration_days: durations.length ? durations : [30],
+                };
+                if (editResellerProd) {
+                  await supabase.from("reseller_products" as any).update(payload).eq("id", editResellerProd.id);
+                } else {
+                  await supabase.from("reseller_products" as any).insert(payload);
+                }
+                toast.success("Saved!"); setResellerProdDialog(false); fetchAll();
+              }}>Save</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Reseller Key Dialog */}
+        <Dialog open={resellerKeyDialog} onOpenChange={setResellerKeyDialog}>
+          <DialogContent className="bg-card/95 backdrop-blur-xl">
+            <DialogHeader>
+              <DialogTitle>Add Reseller Keys</DialogTitle>
+              <DialogDescription>One key per line. Select product and duration.</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Product</label>
+                <select className="w-full p-2 rounded bg-background/50 border border-border text-sm" value={resellerKeyProductId} onChange={e => setResellerKeyProductId(e.target.value)}>
+                  {resellerProducts.map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Duration (days)</label>
+                <Input type="number" value={resellerKeyDuration} onChange={e => setResellerKeyDuration(Number(e.target.value))} className="bg-background/50" />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Keys (one per line)</label>
+                <textarea className="w-full p-2 rounded bg-background/50 border border-border text-sm font-mono min-h-[120px]" value={resellerKeysInput} onChange={e => setResellerKeysInput(e.target.value)} placeholder="KEY-001&#10;KEY-002&#10;KEY-003" />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setResellerKeyDialog(false)}>Cancel</Button>
+              <Button onClick={async () => {
+                const lines = resellerKeysInput.split("\n").map(l => l.trim()).filter(Boolean);
+                if (!lines.length || !resellerKeyProductId) { toast.error("Enter keys and select product"); return; }
+                const rows = lines.map(k => ({ key_code: k, product_id: resellerKeyProductId, duration_days: resellerKeyDuration }));
+                const { error } = await supabase.from("reseller_keys" as any).insert(rows);
+                if (error) { toast.error(error.message); return; }
+                // Update stock count
+                const { count } = await supabase.from("reseller_keys" as any).select("*", { count: "exact", head: true }).eq("product_id", resellerKeyProductId).eq("is_used", false);
+                await supabase.from("reseller_products" as any).update({ stock: count || 0 }).eq("id", resellerKeyProductId);
+                toast.success(`${lines.length} keys added!`); setResellerKeyDialog(false); fetchAll();
+              }}>Add Keys</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );
