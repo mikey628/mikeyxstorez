@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import {
   LayoutDashboard, Package, History, ShoppingCart, LogOut,
-  Menu, X, Shield, MoreVertical, Wallet, User, Settings, CreditCard,
+  Menu, X, Shield, MoreVertical, Wallet, User, Settings, CreditCard, Crown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,6 +23,7 @@ const navKeys = [
   { key: "buyCredit", icon: CreditCard, path: "/buy-credit" },
   { key: "myKeys", icon: ShoppingCart, path: "/my-keys" },
   { key: "transactions", icon: History, path: "/transactions" },
+  { key: "reseller", icon: Crown, path: "/reseller" },
   { key: "topUp", icon: Wallet, path: "/topup" },
   { key: "profile", icon: User, path: "/profile" },
 ];
