@@ -5,6 +5,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
+import { SnowEffect } from "@/components/SnowEffect";
+import { applyTheme, getTheme } from "@/components/ThemeSettings";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
@@ -22,12 +24,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 const queryClient = new QueryClient();
 
 // Apply saved theme on load
-const savedTheme = localStorage.getItem("theme-mode");
-if (savedTheme) {
-  document.documentElement.classList.remove("dark", "eye-protect");
-  if (savedTheme === "dark") document.documentElement.classList.add("dark");
-  else if (savedTheme === "eye-protect") document.documentElement.classList.add("dark", "eye-protect");
-}
+applyTheme(getTheme());
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -35,6 +32,7 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
+        <SnowEffect />
         <BrowserRouter>
           <AuthProvider>
             <Routes>

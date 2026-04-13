@@ -90,7 +90,7 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium truncate">{profile?.display_name || profile?.email}</p>
-              <p className="text-xs text-muted-foreground">${profile?.wallet_points ?? 0} Credits</p>
+              <p className="text-xs credit-amount">${profile?.wallet_points ?? 0} Credits</p>
             </div>
           </div>
           <Button variant="ghost" size="sm" className="w-full justify-start text-muted-foreground" onClick={handleLogout}>
@@ -107,7 +107,7 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
             <Menu className="w-5 h-5" />
           </button>
           <div className="flex items-center gap-2 ml-auto">
-            <span className="text-sm text-muted-foreground hidden sm:inline">
+            <span className="text-sm credit-amount hidden sm:inline">
               <CreditCard className="inline w-4 h-4 mr-1" />
               ${profile?.wallet_points ?? 0} Credits
             </span>

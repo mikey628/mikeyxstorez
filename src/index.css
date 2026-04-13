@@ -105,6 +105,87 @@
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
   }
+
+  .cyberpunk {
+    --background: 270 40% 6%;
+    --foreground: 280 20% 90%;
+    --card: 270 35% 10%;
+    --card-foreground: 280 20% 90%;
+    --popover: 270 35% 10%;
+    --popover-foreground: 280 20% 90%;
+    --primary: 280 100% 65%;
+    --primary-foreground: 270 40% 6%;
+    --secondary: 270 30% 16%;
+    --secondary-foreground: 280 20% 90%;
+    --muted: 270 30% 16%;
+    --muted-foreground: 270 15% 55%;
+    --accent: 300 100% 60%;
+    --accent-foreground: 270 40% 6%;
+    --destructive: 0 80% 55%;
+    --destructive-foreground: 280 20% 90%;
+    --border: 280 40% 22%;
+    --input: 280 40% 22%;
+    --ring: 280 100% 65%;
+    --sidebar-background: 270 40% 6%;
+    --sidebar-foreground: 280 20% 90%;
+    --sidebar-primary: 280 100% 65%;
+    --sidebar-primary-foreground: 270 40% 6%;
+    --sidebar-accent: 270 30% 16%;
+    --sidebar-accent-foreground: 280 20% 90%;
+    --sidebar-border: 280 40% 22%;
+    --sidebar-ring: 280 100% 65%;
+    --success: 142 76% 36%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+  }
+
+  .cold {
+    --background: 210 50% 6%;
+    --foreground: 200 30% 90%;
+    --card: 210 45% 10%;
+    --card-foreground: 200 30% 90%;
+    --popover: 210 45% 10%;
+    --popover-foreground: 200 30% 90%;
+    --primary: 195 100% 55%;
+    --primary-foreground: 210 50% 6%;
+    --secondary: 210 35% 16%;
+    --secondary-foreground: 200 30% 90%;
+    --muted: 210 35% 16%;
+    --muted-foreground: 210 20% 55%;
+    --accent: 185 90% 50%;
+    --accent-foreground: 210 50% 6%;
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 200 30% 90%;
+    --border: 210 35% 20%;
+    --input: 210 35% 20%;
+    --ring: 195 100% 55%;
+    --sidebar-background: 210 50% 6%;
+    --sidebar-foreground: 200 30% 90%;
+    --sidebar-primary: 195 100% 55%;
+    --sidebar-primary-foreground: 210 50% 6%;
+    --sidebar-accent: 210 35% 16%;
+    --sidebar-accent-foreground: 200 30% 90%;
+    --sidebar-border: 210 35% 20%;
+    --sidebar-ring: 195 100% 55%;
+    --success: 142 76% 36%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+  }
+}
+
+/* Snow animation for cold theme */
+@keyframes snowfall {
+  0% { transform: translateY(-10vh) translateX(0); opacity: 1; }
+  50% { transform: translateY(50vh) translateX(20px); opacity: 0.8; }
+  100% { transform: translateY(110vh) translateX(-10px); opacity: 0; }
+}
+
+/* Credit green styling */
+.credit-amount {
+  color: hsl(142, 76%, 45%);
+  font-weight: 600;
 }
 
 @layer base {

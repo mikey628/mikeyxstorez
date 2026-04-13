@@ -1,38 +1,46 @@
-import { Moon, Sun, Eye } from "lucide-react";
+import { Moon, Sun, Eye, Sparkles, Snowflake } from "lucide-react";
 import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
 
-type ThemeMode = "dark" | "light" | "eye-protect";
+type ThemeMode = "dark" | "light" | "eye-protect" | "cyberpunk" | "cold";
 
 const themes: { mode: ThemeMode; label: string; icon: typeof Moon; description: string }[] = [
   { mode: "dark", label: "Dark", icon: Moon, description: "Cool blue dark theme" },
   { mode: "light", label: "Light", icon: Sun, description: "Clean white theme" },
   { mode: "eye-protect", label: "Eye Protect", icon: Eye, description: "Warm tones, easy on eyes" },
+  { mode: "cyberpunk", label: "Cyberpunk", icon: Sparkles, description: "Neon purple vibes" },
+  { mode: "cold", label: "Cold Air", icon: Snowflake, description: "Icy cold with snowfall" },
 ];
+
+export const applyTheme = (mode: ThemeMode) => {
+  const html = document.documentElement;
+  html.classList.remove("dark", "eye-protect", "cyberpunk", "cold");
+  if (mode === "light") return;
+  if (mode === "dark") html.classList.add("dark");
+  else if (mode === "eye-protect") html.classList.add("dark", "eye-protect");
+  else if (mode === "cyberpunk") html.classList.add("dark", "cyberpunk");
+  else if (mode === "cold") html.classList.add("dark", "cold");
+};
+
+export const getTheme = (): ThemeMode => {
+  return (localStorage.getItem("theme-mode") as ThemeMode) || "dark";
+};
 
 export const ThemeSettings = () => {
   const [current, setCurrent] = useState<ThemeMode>("dark");
 
   useEffect(() => {
-    const saved = localStorage.getItem("theme-mode") as ThemeMode | null;
-    if (saved) {
-      setCurrent(saved);
-      applyTheme(saved);
-    }
+    const saved = getTheme();
+    setCurrent(saved);
+    applyTheme(saved);
   }, []);
-
-  const applyTheme = (mode: ThemeMode) => {
-    const html = document.documentElement;
-    html.classList.remove("dark", "eye-protect");
-    if (mode === "dark") html.classList.add("dark");
-    else if (mode === "eye-protect") html.classList.add("dark", "eye-protect");
-    // light = no class
-  };
 
   const setTheme = (mode: ThemeMode) => {
     setCurrent(mode);
     applyTheme(mode);
     localStorage.setItem("theme-mode", mode);
+    // Dispatch event so SnowEffect can listen
+    window.dispatchEvent(new CustomEvent("theme-change", { detail: mode }));
   };
 
   return (
@@ -50,7 +58,6 @@ export const ThemeSettings = () => {
             }`}
             whileHover={{ scale: 1.03, y: -2 }}
             whileTap={{ scale: 0.97 }}
-            style={{ perspective: "600px" }}
           >
             <motion.div
               className={`w-10 h-10 rounded-lg flex items-center justify-center ${
