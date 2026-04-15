@@ -1040,6 +1040,28 @@ const Admin = () => {
               </CardContent>
             </Card>
 
+            {/* Reseller Application Fee */}
+            <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
+              <CardContent className="p-4 space-y-3">
+                <h3 className="font-bold flex items-center gap-2"><Coins className="w-4 h-4" /> Reseller Application Fee</h3>
+                <p className="text-xs text-muted-foreground">Set the credit fee charged when a user submits a reseller application. Set 0 for free.</p>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="number"
+                    placeholder="Fee in $ credits"
+                    className="bg-background/50 w-40"
+                    defaultValue={0}
+                    id="reseller-fee-input"
+                  />
+                  <Button size="sm" onClick={async () => {
+                    const val = (document.getElementById("reseller-fee-input") as HTMLInputElement)?.value || "0";
+                    await supabase.from("site_settings").upsert({ key: "reseller_application_fee", value: val }, { onConflict: "key" });
+                    toast.success(`Reseller fee set to $${val}`);
+                  }}>Save Fee</Button>
+                </div>
+              </CardContent>
+            </Card>
+
             <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
               <CardContent className="p-4 space-y-3">
                 <div className="flex justify-between items-center">
