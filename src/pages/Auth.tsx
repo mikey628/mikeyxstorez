@@ -3,11 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { KeyRound, Mail, Lock, User } from "lucide-react";
-import { AnimatedBackground } from "@/components/AnimatedBackground";
-import { motion } from "framer-motion";
+import { Mail, Lock, User } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -16,6 +14,7 @@ const Auth = () => {
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [loading, setLoading] = useState(false);
+  const [lampOn, setLampOn] = useState(false);
   const navigate = useNavigate();
 
   const handleAuth = async (e: React.FormEvent) => {
@@ -37,7 +36,6 @@ const Auth = () => {
       if (error) {
         toast.error(error.message);
       } else if (signInData.user) {
-        // Fetch profile and approval setting in parallel
         const [{ data: profile }, { data: approvalSetting }] = await Promise.all([
           supabase.from("profiles").select("is_approved, is_banned").eq("user_id", signInData.user.id).single(),
           supabase.from("site_settings").select("value").eq("key", "require_approval").maybeSingle(),
@@ -57,7 +55,6 @@ const Auth = () => {
         }
       }
     } else {
-      // Fetch approval setting before signup
       const { data: approvalSetting } = await supabase
         .from("site_settings").select("value").eq("key", "require_approval").maybeSingle();
       const requireApproval = approvalSetting?.value !== "false";
@@ -65,9 +62,7 @@ const Auth = () => {
       const { error } = await supabase.auth.signUp({
         email,
         password,
-        options: {
-          data: { display_name: displayName },
-        },
+        options: { data: { display_name: displayName } },
       });
       if (error) {
         toast.error(error.message);
@@ -84,70 +79,150 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4 relative overflow-hidden">
-      <AnimatedBackground />
-      <motion.div
-        initial={{ opacity: 0, y: 30, scale: 0.95 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ duration: 0.5, ease: "easeOut" }}
-        className="relative z-10 w-full max-w-md"
-      >
-        <Card className="border-border/50 bg-card/70 backdrop-blur-xl shadow-2xl shadow-primary/10">
-          <CardHeader className="text-center space-y-2">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-[#1a1d2e] relative overflow-hidden transition-colors duration-700">
+      {/* Ambient glow when lamp is on */}
+      <AnimatePresence>
+        {lampOn && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.8 }}
+            className="absolute inset-0 pointer-events-none"
+          >
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[600px] rounded-full bg-yellow-400/10 blur-[120px]" />
+            <div className="absolute top-10 left-1/2 -translate-x-1/2 w-[300px] h-[400px] bg-gradient-to-b from-yellow-300/15 via-yellow-200/5 to-transparent blur-[60px]" />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Lamp */}
+      <div className="relative z-20 flex flex-col items-center mb-8 cursor-pointer select-none" onClick={() => setLampOn(!lampOn)}>
+        {/* Wire */}
+        <div className="w-[3px] h-16 bg-gray-500/60" />
+        {/* Lamp base/mount */}
+        <div className="w-16 h-4 bg-gray-500/80 rounded-b-lg" />
+        {/* Bulb */}
+        <motion.div
+          className="w-20 h-20 rounded-full flex items-center justify-center relative -mt-2"
+          animate={{
+            backgroundColor: lampOn ? "rgba(250, 204, 21, 0.9)" : "rgba(107, 114, 128, 0.5)",
+            boxShadow: lampOn
+              ? "0 0 60px 20px rgba(250, 204, 21, 0.4), 0 0 120px 40px rgba(250, 204, 21, 0.15)"
+              : "0 0 0 0 transparent",
+          }}
+          transition={{ duration: 0.5 }}
+        >
+          {lampOn && (
             <motion.div
-              className="mx-auto w-14 h-14 bg-primary/10 rounded-xl flex items-center justify-center mb-2 ring-2 ring-primary/20"
-              animate={{ boxShadow: ["0 0 0 0 hsl(262 83% 58% / 0)", "0 0 20px 5px hsl(262 83% 58% / 0.15)", "0 0 0 0 hsl(262 83% 58% / 0)"] }}
-              transition={{ duration: 3, repeat: Infinity }}
-            >
-              <KeyRound className="w-7 h-7 text-primary" />
-            </motion.div>
-            <CardTitle className="text-2xl font-bold">MICKEY OFFICIAL STORE</CardTitle>
-            <CardDescription>
-              {isForgot ? "Reset your password" : isLogin ? "Sign in to your account" : "Create a new account"}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
+              initial={{ opacity: 0, scale: 0.5 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="absolute inset-0 rounded-full bg-yellow-300/40 blur-xl"
+            />
+          )}
+        </motion.div>
+        <p className="text-gray-400 text-xs mt-3 tracking-wider">Lamp (click)</p>
+      </div>
+
+      {/* Login Form - only visible when lamp is ON */}
+      <AnimatePresence>
+        {lampOn && (
+          <motion.div
+            initial={{ opacity: 0, y: 40, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 40, scale: 0.9 }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
+            className="relative z-10 w-full max-w-sm px-6"
+          >
+            <div className="text-center mb-6">
+              <h1 className="text-2xl font-bold text-gray-100 tracking-wide">Member Login</h1>
+              <p className="text-gray-400 text-sm mt-1">
+                {isForgot ? "Reset your password" : isLogin ? "Sign in to continue" : "Create a new account"}
+              </p>
+            </div>
+
             <form onSubmit={handleAuth} className="space-y-4">
               {!isLogin && !isForgot && (
-                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="relative">
-                  <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input placeholder="Display Name" value={displayName} onChange={(e) => setDisplayName(e.target.value)} className="pl-10 bg-background/50 backdrop-blur-sm" />
+                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}>
+                  <div className="relative">
+                    <User className="absolute left-3 top-3 h-4 w-4 text-gray-500" />
+                    <Input
+                      placeholder="Username"
+                      value={displayName}
+                      onChange={(e) => setDisplayName(e.target.value)}
+                      className="pl-10 bg-gray-800/60 border-gray-700/50 text-gray-100 placeholder:text-gray-500 focus:border-yellow-500/50 focus:ring-yellow-500/20"
+                    />
+                  </div>
                 </motion.div>
               )}
               <div className="relative">
-                <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required className="pl-10 bg-background/50 backdrop-blur-sm" />
+                <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-500" />
+                <Input
+                  type="email"
+                  placeholder="Email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  className="pl-10 bg-gray-800/60 border-gray-700/50 text-gray-100 placeholder:text-gray-500 focus:border-yellow-500/50 focus:ring-yellow-500/20"
+                />
               </div>
               {!isForgot && (
                 <div className="relative">
-                  <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} className="pl-10 bg-background/50 backdrop-blur-sm" />
+                  <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-500" />
+                  <Input
+                    type="password"
+                    placeholder="Password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    minLength={6}
+                    className="pl-10 bg-gray-800/60 border-gray-700/50 text-gray-100 placeholder:text-gray-500 focus:border-yellow-500/50 focus:ring-yellow-500/20"
+                  />
                 </div>
               )}
-              <Button type="submit" className="w-full shadow-lg shadow-primary/20" disabled={loading}>
-                {loading ? "Loading..." : isForgot ? "Send Reset Link" : isLogin ? "Sign In" : "Sign Up"}
+              <Button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-yellow-500 hover:bg-yellow-400 text-gray-900 font-bold shadow-lg shadow-yellow-500/20 transition-all"
+              >
+                {loading ? "Loading..." : isForgot ? "Send Reset Link" : isLogin ? "Sign in" : "Sign Up"}
               </Button>
             </form>
+
             <div className="mt-4 text-center space-y-2">
               {!isForgot && (
-                <button onClick={() => setIsForgot(true)} className="text-sm text-muted-foreground hover:text-primary transition-colors">
+                <button onClick={() => setIsForgot(true)} className="text-sm text-gray-400 hover:text-yellow-400 transition-colors">
                   Forgot password?
                 </button>
               )}
               <div>
-                <button onClick={() => { setIsLogin(!isLogin); setIsForgot(false); }} className="text-sm text-primary hover:underline">
+                <button onClick={() => { setIsLogin(!isLogin); setIsForgot(false); }} className="text-sm text-yellow-400 hover:underline">
                   {isLogin ? "Don't have an account? Sign Up" : "Already have an account? Sign In"}
                 </button>
               </div>
               {isForgot && (
-                <button onClick={() => setIsForgot(false)} className="text-sm text-primary hover:underline">
+                <button onClick={() => setIsForgot(false)} className="text-sm text-yellow-400 hover:underline">
                   Back to Sign In
                 </button>
               )}
             </div>
-          </CardContent>
-        </Card>
-      </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Hint when lamp is off */}
+      <AnimatePresence>
+        {!lampOn && (
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="text-gray-600 text-sm mt-4 z-10"
+          >
+            Turn on the lamp to login
+          </motion.p>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
