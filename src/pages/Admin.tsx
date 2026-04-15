@@ -949,6 +949,73 @@ const Admin = () => {
 
           {/* KEYS TAB */}
           <TabsContent value="keys" className="space-y-4">
+            {/* Key Stats Summary */}
+            <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
+              <CardContent className="p-4 space-y-3">
+                <h3 className="font-bold flex items-center gap-2"><Key className="w-4 h-4" /> Key Statistics</h3>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="p-3 bg-background/50 rounded-lg text-center">
+                    <p className="text-2xl font-bold text-primary">{keys.length}</p>
+                    <p className="text-xs text-muted-foreground">Total Keys</p>
+                  </div>
+                  <div className="p-3 bg-background/50 rounded-lg text-center">
+                    <p className="text-2xl font-bold text-green-400">{keys.filter(k => !k.is_used).length}</p>
+                    <p className="text-xs text-muted-foreground">Available</p>
+                  </div>
+                  <div className="p-3 bg-background/50 rounded-lg text-center">
+                    <p className="text-2xl font-bold text-yellow-400">{keys.filter(k => k.is_used).length}</p>
+                    <p className="text-xs text-muted-foreground">Used</p>
+                  </div>
+                  <div className="p-3 bg-background/50 rounded-lg text-center">
+                    <p className="text-2xl font-bold">{[...new Set(keys.map(k => k.duration_days))].length}</p>
+                    <p className="text-xs text-muted-foreground">Duration Types</p>
+                  </div>
+                </div>
+                {/* Per-duration breakdown */}
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground font-medium">By Duration:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {Object.entries(
+                      keys.reduce((acc: Record<string, { total: number; available: number; used: number }>, k) => {
+                        const d = String(k.duration_days || "?");
+                        if (!acc[d]) acc[d] = { total: 0, available: 0, used: 0 };
+                        acc[d].total++;
+                        if (k.is_used) acc[d].used++; else acc[d].available++;
+                        return acc;
+                      }, {})
+                    ).map(([dur, info]) => (
+                      <div key={dur} className="px-3 py-2 bg-primary/5 border border-primary/20 rounded-lg text-xs">
+                        <span className="font-bold text-primary">{dur}d</span>
+                        <span className="text-muted-foreground ml-2">
+                          {(info as any).total} total · <span className="text-green-400">{(info as any).available} avail</span> · <span className="text-yellow-400">{(info as any).used} used</span>
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                {/* Per-product breakdown */}
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground font-medium">By Product:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {Object.entries(
+                      keys.reduce((acc: Record<string, { name: string; total: number; available: number }>, k) => {
+                        const name = (k as any).products?.name || "Unknown";
+                        if (!acc[name]) acc[name] = { name, total: 0, available: 0 };
+                        acc[name].total++;
+                        if (!k.is_used) acc[name].available++;
+                        return acc;
+                      }, {})
+                    ).map(([name, info]) => (
+                      <div key={name} className="px-3 py-2 bg-background/50 border border-border/30 rounded-lg text-xs">
+                        <span className="font-medium">{name}</span>
+                        <span className="text-muted-foreground ml-2">{(info as any).total} total · <span className="text-green-400">{(info as any).available} avail</span></span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
             <div className="space-y-2">
               {keys.map((k) => (
                 <Card key={k.id} className="border-border/50 bg-card/50 backdrop-blur-sm">
