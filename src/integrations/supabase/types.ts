@@ -248,6 +248,45 @@ export type Database = {
         }
         Relationships: []
       }
+      payment_methods: {
+        Row: {
+          created_at: string
+          currency: string | null
+          id: string
+          instructions: string | null
+          is_active: boolean
+          method_type: string
+          name: string
+          qr_url: string | null
+          sort_order: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          currency?: string | null
+          id?: string
+          instructions?: string | null
+          is_active?: boolean
+          method_type?: string
+          name: string
+          qr_url?: string | null
+          sort_order?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          currency?: string | null
+          id?: string
+          instructions?: string | null
+          is_active?: boolean
+          method_type?: string
+          name?: string
+          qr_url?: string | null
+          sort_order?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       products: {
         Row: {
           created_at: string
@@ -260,6 +299,7 @@ export type Database = {
           price_points: number
           price_usd: number | null
           stock: number
+          tier_prices: Json
           updated_at: string
         }
         Insert: {
@@ -273,6 +313,7 @@ export type Database = {
           price_points: number
           price_usd?: number | null
           stock?: number
+          tier_prices?: Json
           updated_at?: string
         }
         Update: {
@@ -286,6 +327,7 @@ export type Database = {
           price_points?: number
           price_usd?: number | null
           stock?: number
+          tier_prices?: Json
           updated_at?: string
         }
         Relationships: []
@@ -347,6 +389,7 @@ export type Database = {
           avg_followers: string | null
           created_at: string
           id: string
+          reseller_tier: string
           seller_name: string
           status: string
           tiktok_channel: string | null
@@ -359,6 +402,7 @@ export type Database = {
           avg_followers?: string | null
           created_at?: string
           id?: string
+          reseller_tier?: string
           seller_name: string
           status?: string
           tiktok_channel?: string | null
@@ -371,6 +415,7 @@ export type Database = {
           avg_followers?: string | null
           created_at?: string
           id?: string
+          reseller_tier?: string
           seller_name?: string
           status?: string
           tiktok_channel?: string | null

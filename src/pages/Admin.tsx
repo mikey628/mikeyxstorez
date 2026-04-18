@@ -23,6 +23,7 @@ import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { motion } from "framer-motion";
 import { Progress } from "@/components/ui/progress";
 import { ThemeSettings as ThemeSettingsComponent } from "@/components/ThemeSettings";
+import { AdminTierPrices, AdminPaymentMethods, AdminTopupToggle, ResellerTierSelect } from "@/components/AdminTierExtras";
 
 const Admin = () => {
   const { isAdmin, loading } = useAuth();
@@ -1063,6 +1064,8 @@ const Admin = () => {
 
           {/* RESELLER TAB */}
           <TabsContent value="reseller" className="space-y-4">
+            <AdminTierPrices products={products} onSaved={fetchAll} />
+            <AdminPaymentMethods />
             <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
               <CardContent className="p-4 space-y-3">
                 <h3 className="font-bold flex items-center gap-2"><Users className="w-4 h-4" /> Reseller Applications ({resellerApps.length})</h3>
@@ -1095,10 +1098,13 @@ const Admin = () => {
                           </div>
                         )}
                         {app.status === "approved" && (
-                          <Button size="sm" variant="outline" onClick={async () => {
-                            await supabase.from("reseller_applications" as any).update({ status: "rejected" }).eq("id", app.id);
-                            toast.success("Access revoked"); fetchAll();
-                          }}>Revoke</Button>
+                          <div className="flex flex-col gap-2 items-end">
+                            <ResellerTierSelect application={app} onChange={fetchAll} />
+                            <Button size="sm" variant="outline" onClick={async () => {
+                              await supabase.from("reseller_applications" as any).update({ status: "rejected" }).eq("id", app.id);
+                              toast.success("Access revoked"); fetchAll();
+                            }}>Revoke</Button>
+                          </div>
                         )}
                       </div>
                     ))}
@@ -1435,6 +1441,7 @@ const Admin = () => {
 
           {/* TOPUP TAB */}
           <TabsContent value="topup" className="space-y-4">
+            <AdminTopupToggle />
             {/* Topup Settings */}
             <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
               <CardContent className="p-4 space-y-4">
