@@ -282,6 +282,28 @@ const Topup = () => {
     );
   }
 
+  // Topup on/off gate
+  if (settings["topup_enabled"] === "false") {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-6">
+        <AnimatedBackground />
+        <motion.div
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          className="text-center space-y-4 relative z-10 max-w-sm w-full bg-card/80 border border-border/50 rounded-2xl p-8 backdrop-blur-md"
+        >
+          <div className="w-16 h-16 mx-auto rounded-full bg-warning/20 flex items-center justify-center">
+            <AlertTriangle className="w-8 h-8 text-warning" />
+          </div>
+          <h1 className="text-xl font-bold">Topup Temporarily Closed</h1>
+          <p className="text-muted-foreground text-sm">
+            The topup service is currently disabled. Please check back later.
+          </p>
+        </motion.div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <AnimatedBackground />
