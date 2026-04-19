@@ -1065,6 +1065,8 @@ const Admin = () => {
           {/* RESELLER TAB */}
           <TabsContent value="reseller" className="space-y-4">
             <AdminTierPrices products={products} onSaved={fetchAll} />
+            <AdminBonusRules products={products} />
+            <AdminResellerBenefits />
             <AdminPaymentMethods />
             <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
               <CardContent className="p-4 space-y-3">
