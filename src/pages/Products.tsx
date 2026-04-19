@@ -454,7 +454,30 @@ const Products = () => {
                       label="After"
                       value={`$${((profile?.wallet_points ?? 0) - totalPrice).toFixed(2)}`}
                     />
-                  </div>
+                      </div>
+
+                      {bonusKeys.length > 0 && (
+                        <motion.div
+                          initial={{ opacity: 0, scale: 0.9 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          className="rounded-lg border-2 border-yellow-500/40 bg-gradient-to-br from-yellow-500/10 via-orange-500/5 to-yellow-500/10 p-3 space-y-2"
+                        >
+                          <div className="flex items-center gap-2 text-yellow-400 font-bold text-sm">
+                            <Gift className="w-4 h-4" />
+                            🎉 Congratulations! You bought {deliveredKeys.length} keys and got {bonusKeys.length} FREE bonus key{bonusKeys.length > 1 && "s"}!
+                          </div>
+                          <div className="max-h-32 overflow-y-auto space-y-1.5">
+                            {bonusKeys.map((k, i) => (
+                              <div
+                                key={i}
+                                className="font-mono text-xs break-all select-all bg-background/60 px-2 py-1.5 rounded border border-yellow-500/30"
+                              >
+                                🎁 {k}
+                              </div>
+                            ))}
+                          </div>
+                        </motion.div>
+                      )}
 
                   {(profile?.wallet_points ?? 0) < totalPrice ? (
                     <div className="space-y-2">
