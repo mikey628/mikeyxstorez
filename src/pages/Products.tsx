@@ -75,12 +75,15 @@ const Products = () => {
     fetchAll();
   }, [user?.id]);
 
-  // Compute price for a product+duration based on tier
+  // Compute price for a product+duration based on tier.
+  // Order: tier_prices[currentTier][d] → tier_prices.normal[d] → duration_prices[d] → price_points
   const priceFor = (product: any, d: number): number => {
     const tierPrices = product.tier_prices || {};
     const durationPrices = product.duration_prices || {};
     const tp = tierPrices[tier]?.[String(d)];
     if (typeof tp === "number") return Number(tp);
+    const np = tierPrices.normal?.[String(d)];
+    if (typeof np === "number") return Number(np);
     const dp = durationPrices[String(d)];
     if (typeof dp === "number") return Number(dp);
     return Number(product.price_points || 0);
@@ -118,6 +121,8 @@ const Products = () => {
     setStep(1);
     setStocks({});
     setDeliveredKeys([]);
+    setBonusKeys([]);
+    setBonusNote("");
     setGenerating(false);
     setGenProgress(0);
     setOpen(true);
