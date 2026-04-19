@@ -663,5 +663,4 @@ export const AdminResellerBenefits = () => {
     </Card>
   );
 };
-  );
-};
+
