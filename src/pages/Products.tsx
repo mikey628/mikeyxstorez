@@ -178,7 +178,15 @@ const Products = () => {
           clearInterval(interval);
           setGenerating(false);
           setDeliveredKeys(data.keys || (data.key_code ? [data.key_code] : []));
-          toast.success(`🎉 ${data.quantity || qty} key${qty > 1 ? "s" : ""} delivered!`);
+          setBonusKeys(data.bonus_keys || []);
+          setBonusNote(data.bonus_note || "");
+          if (data.bonus_keys?.length) {
+            toast.success(
+              `🎉 ${data.quantity || qty} key${qty > 1 ? "s" : ""} + 🎁 ${data.bonus_keys.length} FREE bonus key${data.bonus_keys.length > 1 ? "s" : ""}!`
+            );
+          } else {
+            toast.success(`🎉 ${data.quantity || qty} key${qty > 1 ? "s" : ""} delivered!`);
+          }
           refreshProfile();
           fetchAll();
         }
@@ -190,7 +198,7 @@ const Products = () => {
   };
 
   const copyAll = () => {
-    navigator.clipboard.writeText(deliveredKeys.join("\n"));
+    navigator.clipboard.writeText([...deliveredKeys, ...bonusKeys].join("\n"));
     toast.success("All keys copied!");
   };
 
