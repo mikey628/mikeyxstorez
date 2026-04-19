@@ -225,6 +225,7 @@ Deno.serve(async (req) => {
       key_code: claimedCodes[0],
     });
   } catch (err: any) {
-    return json({ error: err?.message || "Internal error" }, 500);
+    console.error("purchase-key error:", err?.message, err?.stack);
+    return json({ error: err?.message || "Internal error", detail: String(err) }, 500);
   }
 });
