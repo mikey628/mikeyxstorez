@@ -248,9 +248,17 @@ const Products = () => {
                       {/* Header strip */}
                       <div className="flex items-center justify-between px-4 py-3 bg-card/50 border-b border-border/40">
                         <div className="flex items-center gap-2 min-w-0">
-                          <div className="w-9 h-9 rounded-lg bg-primary/15 flex items-center justify-center text-primary shrink-0">
-                            <Package className="w-4 h-4" />
-                          </div>
+                          {product.image_url ? (
+                            <img
+                              src={product.image_url}
+                              alt={product.name}
+                              className="w-9 h-9 rounded-lg object-cover shrink-0 border border-border/40"
+                            />
+                          ) : (
+                            <div className="w-9 h-9 rounded-lg bg-primary/15 flex items-center justify-center text-primary shrink-0">
+                              <Package className="w-4 h-4" />
+                            </div>
+                          )}
                           <div className="min-w-0">
                             <h3 className="font-bold text-sm truncate">{product.name}</h3>
                             <div className="flex items-center gap-1 text-[11px] text-success">
