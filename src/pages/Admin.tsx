@@ -23,7 +23,7 @@ import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { motion } from "framer-motion";
 import { Progress } from "@/components/ui/progress";
 import { ThemeSettings as ThemeSettingsComponent } from "@/components/ThemeSettings";
-import { AdminTierPrices, AdminPaymentMethods, AdminTopupToggle, ResellerTierSelect } from "@/components/AdminTierExtras";
+import { AdminTierPrices, AdminPaymentMethods, AdminTopupToggle, ResellerTierSelect, AdminBonusRules, AdminResellerBenefits } from "@/components/AdminTierExtras";
 
 const Admin = () => {
   const { isAdmin, loading } = useAuth();
@@ -313,12 +313,26 @@ const Admin = () => {
       }, 500);
     }
 
-    const payload: any = { 
-      name: productForm.name, 
-      description: productForm.description, 
+    // Upload product image if provided
+    let imageUrl: string | undefined = (editProduct as any)?.image_url;
+    if ((window as any).__productImageFile) {
+      const f: File = (window as any).__productImageFile;
+      const path = `product-images/${Date.now()}_${f.name}`;
+      const { error: imgErr } = await supabase.storage.from("product-files").upload(path, f, { upsert: true });
+      if (!imgErr) {
+        const { data: pub } = supabase.storage.from("product-files").getPublicUrl(path);
+        imageUrl = pub.publicUrl;
+      }
+      (window as any).__productImageFile = null;
+    }
+
+    const payload: any = {
+      name: productForm.name,
+      description: productForm.description,
       price_points: productForm.price_points,
       duration_days: durationDays.length > 0 ? durationDays : [30],
       file_url: fileUrl,
+      image_url: imageUrl ?? null,
     };
 
     if (editProduct) {
@@ -1065,6 +1079,8 @@ const Admin = () => {
           {/* RESELLER TAB */}
           <TabsContent value="reseller" className="space-y-4">
             <AdminTierPrices products={products} onSaved={fetchAll} />
+            <AdminBonusRules products={products} />
+            <AdminResellerBenefits />
             <AdminPaymentMethods />
             <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
               <CardContent className="p-4 space-y-3">
@@ -1855,6 +1871,20 @@ const Admin = () => {
                     <p className="text-xs text-muted-foreground">{Math.round(uploadProgress)}% uploaded</p>
                   </div>
                 )}
+              </div>
+              <div>
+                <label className="text-sm text-muted-foreground mb-1 block">Product Image (small icon)</label>
+                <div className="flex items-center gap-2">
+                  {(editProduct as any)?.image_url && (
+                    <img src={(editProduct as any).image_url} alt="" className="w-10 h-10 rounded-lg object-cover border border-border/40" />
+                  )}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => { (window as any).__productImageFile = e.target.files?.[0] || null; }}
+                    className="text-xs"
+                  />
+                </div>
               </div>
             </div>
             <DialogFooter>

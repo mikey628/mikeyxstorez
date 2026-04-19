@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      bonus_rules: {
+        Row: {
+          created_at: string
+          free_keys: number
+          id: string
+          is_active: boolean
+          min_keys: number
+          note: string | null
+          product_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          free_keys: number
+          id?: string
+          is_active?: boolean
+          min_keys: number
+          note?: string | null
+          product_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          free_keys?: number
+          id?: string
+          is_active?: boolean
+          min_keys?: number
+          note?: string | null
+          product_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       chat_messages: {
         Row: {
           content: string
@@ -295,6 +328,7 @@ export type Database = {
           duration_prices: Json | null
           file_url: string | null
           id: string
+          image_url: string | null
           name: string
           price_points: number
           price_usd: number | null
@@ -309,6 +343,7 @@ export type Database = {
           duration_prices?: Json | null
           file_url?: string | null
           id?: string
+          image_url?: string | null
           name: string
           price_points: number
           price_usd?: number | null
@@ -323,6 +358,7 @@ export type Database = {
           duration_prices?: Json | null
           file_url?: string | null
           id?: string
+          image_url?: string | null
           name?: string
           price_points?: number
           price_usd?: number | null

@@ -32,12 +32,15 @@ const Reseller = () => {
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({ seller_name: "", whatsapp: "", tiktok_channel: "", avg_followers: "" });
   const [applicationFee, setApplicationFee] = useState<number>(0);
+  const [benefitsText, setBenefitsText] = useState<string>("");
 
   const isApproved = application?.status === "approved";
 
   useEffect(() => {
     fetchApplication();
     fetchFee();
+    supabase.from("site_settings").select("value").eq("key", "reseller_benefits_text").maybeSingle()
+      .then(({ data }) => setBenefitsText(data?.value || ""));
   }, [user]);
 
   const fetchApplication = async () => {
@@ -138,16 +141,18 @@ const Reseller = () => {
                     👉 Become a <span className="text-primary font-bold">Drip & HG Key</span> Reseller and get exclusive benefits:
                   </p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {offerItems.map((item, i) => (
+                    {(benefitsText
+                      ? benefitsText.split("\n").filter((l) => l.trim())
+                      : offerItems.map((o) => `${o.text}`)
+                    ).map((line, i) => (
                       <motion.div
                         key={i}
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: i * 0.1 }}
-                        className="flex items-center gap-2 text-sm"
+                        transition={{ delay: i * 0.08 }}
+                        className="flex items-start gap-2 text-sm bg-card/40 rounded-lg p-2 border border-border/30"
                       >
-                        <item.icon className={`w-4 h-4 ${item.color}`} />
-                        <span>{item.text}</span>
+                        <span className="leading-relaxed">{line}</span>
                       </motion.div>
                     ))}
                   </div>

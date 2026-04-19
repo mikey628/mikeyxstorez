@@ -11,8 +11,10 @@ import {
 import { toast } from "sonner";
 import { Plus, Trash2, Edit, CreditCard, Upload, Power } from "lucide-react";
 
-const TIERS = ["basic", "pro", "vip"] as const;
+const TIERS = ["normal", "basic", "pro", "vip"] as const;
 type Tier = typeof TIERS[number];
+const RESELLER_TIERS = ["basic", "pro", "vip"] as const;
+type ResellerTier = typeof RESELLER_TIERS[number];
 
 /* ---------- Tier Pricing Editor (per product) ---------- */
 export const AdminTierPrices = ({
@@ -24,14 +26,14 @@ export const AdminTierPrices = ({
 }) => {
   const [openProd, setOpenProd] = useState<any>(null);
   const [tierPrices, setTierPrices] = useState<Record<Tier, Record<string, string>>>({
-    basic: {}, pro: {}, vip: {},
+    normal: {}, basic: {}, pro: {}, vip: {},
   });
   const [saving, setSaving] = useState(false);
 
   const open = (p: any) => {
     setOpenProd(p);
     const tp = (p.tier_prices || {}) as any;
-    const initial: any = { basic: {}, pro: {}, vip: {} };
+    const initial: any = { normal: {}, basic: {}, pro: {}, vip: {} };
     TIERS.forEach((t) => {
       const obj = tp[t] || {};
       Object.keys(obj).forEach((k) => {
@@ -74,7 +76,7 @@ export const AdminTierPrices = ({
             <CreditCard className="w-4 h-4 text-primary" /> Reseller Tier Pricing
           </h3>
           <p className="text-xs text-muted-foreground">
-            Set discounted prices for Basic / Pro / VIP resellers per product. Empty = falls back to normal price.
+            Set per-product prices for Normal users and Basic / Pro / VIP resellers, per duration.
           </p>
           {products.map((p) => {
             const tp = (p.tier_prices || {}) as any;
@@ -87,11 +89,11 @@ export const AdminTierPrices = ({
                 <div>
                   <p className="font-medium text-sm">{p.name}</p>
                   <p className="text-[11px] text-muted-foreground">
-                    Basic: {counts[0]} · Pro: {counts[1]} · VIP: {counts[2]}
+                    Normal: {counts[0]} · Basic: {counts[1]} · Pro: {counts[2]} · VIP: {counts[3]}
                   </p>
                 </div>
                 <Button size="sm" variant="outline" onClick={() => open(p)}>
-                  <Edit className="w-3 h-3 mr-1" /> Edit Tiers
+                  <Edit className="w-3 h-3 mr-1" /> Edit Prices
                 </Button>
               </div>
             );
@@ -108,13 +110,15 @@ export const AdminTierPrices = ({
             {(openProd?.duration_days || [30]).map((d: number) => (
               <div key={d} className="border border-border/40 rounded-lg p-3 space-y-2">
                 <p className="text-xs font-semibold text-muted-foreground">
-                  {d} day{d > 1 && "s"} — Normal: $
+                  {d} day{d > 1 && "s"} — Legacy fallback: $
                   {openProd?.duration_prices?.[String(d)] ?? openProd?.price_points ?? 0}
                 </p>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   {TIERS.map((t) => (
                     <div key={t}>
-                      <label className="text-[10px] uppercase text-muted-foreground">{t}</label>
+                      <label className={`text-[10px] uppercase font-bold ${t === "normal" ? "text-foreground" : "text-primary"}`}>
+                        {t}
+                      </label>
                       <Input
                         type="number"
                         step="0.01"
@@ -417,9 +421,9 @@ export const ResellerTierSelect = ({
   application: any;
   onChange?: () => void;
 }) => {
-  const [tier, setTier] = useState<Tier>(application.reseller_tier || "basic");
+  const [tier, setTier] = useState<ResellerTier>(application.reseller_tier || "basic");
 
-  const save = async (t: Tier) => {
+  const save = async (t: ResellerTier) => {
     setTier(t);
     await supabase
       .from("reseller_applications")
@@ -431,7 +435,7 @@ export const ResellerTierSelect = ({
 
   return (
     <div className="flex gap-1">
-      {TIERS.map((t) => (
+      {RESELLER_TIERS.map((t) => (
         <Button
           key={t}
           size="sm"
@@ -445,3 +449,218 @@ export const ResellerTierSelect = ({
     </div>
   );
 };
+
+/* ---------- Bonus Rules CRUD (buy N → get M free) ---------- */
+export const AdminBonusRules = ({ products }: { products: any[] }) => {
+  const [rules, setRules] = useState<any[]>([]);
+  const [dialog, setDialog] = useState(false);
+  const [editing, setEditing] = useState<any>(null);
+  const [form, setForm] = useState({
+    min_keys: 5,
+    free_keys: 1,
+    product_id: "" as string,
+    note: "",
+    is_active: true,
+  });
+
+  const fetchRules = async () => {
+    const { data } = await supabase
+      .from("bonus_rules" as any)
+      .select("*")
+      .order("min_keys", { ascending: true });
+    setRules(data || []);
+  };
+  useEffect(() => { fetchRules(); }, []);
+
+  const openNew = () => {
+    setEditing(null);
+    setForm({ min_keys: 5, free_keys: 1, product_id: "", note: "", is_active: true });
+    setDialog(true);
+  };
+  const openEdit = (r: any) => {
+    setEditing(r);
+    setForm({
+      min_keys: r.min_keys,
+      free_keys: r.free_keys,
+      product_id: r.product_id || "",
+      note: r.note || "",
+      is_active: r.is_active,
+    });
+    setDialog(true);
+  };
+  const save = async () => {
+    if (form.min_keys < 1 || form.free_keys < 1) return toast.error("Min/free keys must be ≥ 1");
+    const payload = {
+      min_keys: form.min_keys,
+      free_keys: form.free_keys,
+      product_id: form.product_id || null,
+      note: form.note || null,
+      is_active: form.is_active,
+    };
+    if (editing) {
+      await supabase.from("bonus_rules" as any).update(payload).eq("id", editing.id);
+    } else {
+      await supabase.from("bonus_rules" as any).insert(payload);
+    }
+    toast.success("Saved");
+    setDialog(false);
+    fetchRules();
+  };
+  const remove = async (id: string) => {
+    await supabase.from("bonus_rules" as any).delete().eq("id", id);
+    fetchRules();
+  };
+  const toggle = async (r: any) => {
+    await supabase.from("bonus_rules" as any).update({ is_active: !r.is_active }).eq("id", r.id);
+    fetchRules();
+  };
+  const productName = (id: string | null) =>
+    id ? (products.find((p) => p.id === id)?.name || "—") : "All products";
+
+  return (
+    <>
+      <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
+        <CardContent className="p-4 space-y-3">
+          <div className="flex justify-between items-center">
+            <h3 className="font-bold flex items-center gap-2">
+              🎁 Bonus Rules — Buy N keys, get M free
+            </h3>
+            <Button size="sm" onClick={openNew}>
+              <Plus className="w-3 h-3 mr-1" /> Add
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Higher <b>min_keys</b> wins. Product-specific rule beats "All products" rule.
+          </p>
+          {rules.length === 0 && (
+            <p className="text-xs text-muted-foreground text-center py-4">No bonus rules yet.</p>
+          )}
+          {rules.map((r) => (
+            <div
+              key={r.id}
+              className="flex items-center justify-between p-3 bg-background/50 rounded-lg border border-border/30"
+            >
+              <div>
+                <p className="font-medium text-sm">
+                  Buy {r.min_keys}+ → Get <span className="text-success font-bold">{r.free_keys}</span> FREE
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  Applies to: {productName(r.product_id)}
+                  {r.note && ` · ${r.note}`}
+                </p>
+              </div>
+              <div className="flex items-center gap-1">
+                <Badge variant={r.is_active ? "default" : "secondary"} className="text-[10px]">
+                  {r.is_active ? "Active" : "Off"}
+                </Badge>
+                <Button size="icon" variant="ghost" onClick={() => toggle(r)}><Power className="w-3 h-3" /></Button>
+                <Button size="icon" variant="ghost" onClick={() => openEdit(r)}><Edit className="w-3 h-3" /></Button>
+                <Button size="icon" variant="ghost" className="text-destructive" onClick={() => remove(r.id)}>
+                  <Trash2 className="w-3 h-3" />
+                </Button>
+              </div>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+
+      <Dialog open={dialog} onOpenChange={setDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editing ? "Edit" : "Add"} Bonus Rule</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-xs">Buy at least (keys)</label>
+                <Input type="number" min={1} value={form.min_keys}
+                  onChange={(e) => setForm((s) => ({ ...s, min_keys: parseInt(e.target.value) || 0 }))} />
+              </div>
+              <div>
+                <label className="text-xs">Get free (keys)</label>
+                <Input type="number" min={1} value={form.free_keys}
+                  onChange={(e) => setForm((s) => ({ ...s, free_keys: parseInt(e.target.value) || 0 }))} />
+              </div>
+            </div>
+            <div>
+              <label className="text-xs">Apply to product</label>
+              <select
+                className="w-full h-10 rounded-md border border-input bg-background/50 px-3 text-sm"
+                value={form.product_id}
+                onChange={(e) => setForm((s) => ({ ...s, product_id: e.target.value }))}
+              >
+                <option value="">All products</option>
+                {products.map((p) => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs">Note (optional)</label>
+              <Input value={form.note}
+                onChange={(e) => setForm((s) => ({ ...s, note: e.target.value }))}
+                placeholder="e.g. Limited time offer" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialog(false)}>Cancel</Button>
+            <Button onClick={save}>Save</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+};
+
+/* ---------- Reseller Benefits Text Editor ---------- */
+export const AdminResellerBenefits = () => {
+  const [text, setText] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    supabase
+      .from("site_settings")
+      .select("value")
+      .eq("key", "reseller_benefits_text")
+      .maybeSingle()
+      .then(({ data }) => {
+        setText(data?.value || "");
+        setLoading(false);
+      });
+  }, []);
+
+  const save = async () => {
+    setSaving(true);
+    await supabase
+      .from("site_settings")
+      .upsert({ key: "reseller_benefits_text", value: text }, { onConflict: "key" });
+    setSaving(false);
+    toast.success("Reseller benefits updated");
+  };
+
+  if (loading) return null;
+  return (
+    <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
+      <CardContent className="p-4 space-y-3">
+        <h3 className="font-bold flex items-center gap-2">
+          ✨ Reseller Benefits Text
+        </h3>
+        <p className="text-xs text-muted-foreground">
+          Shown on the Reseller page. One benefit per line. Emojis welcome.
+        </p>
+        <Textarea
+          rows={8}
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="💰 Extra Discount on Bulk Purchases&#10;🔑 Free Keys on Selected Plans&#10;..."
+          className="font-mono text-sm"
+        />
+        <Button onClick={save} disabled={saving}>
+          {saving ? "Saving..." : "Save Benefits"}
+        </Button>
+      </CardContent>
+    </Card>
+  );
+};
+

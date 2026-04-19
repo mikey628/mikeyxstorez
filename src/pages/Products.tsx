@@ -12,11 +12,12 @@ import {
 import { toast } from "sonner";
 import {
   Package, ShoppingCart, FileDown, Loader2, Lock, Minus, Plus,
-  ShieldCheck, Tag, ArrowRight, CheckCircle2, Crown, Copy,
+  ShieldCheck, Tag, ArrowRight, CheckCircle2, Crown, Copy, Wallet, Gift,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { Progress } from "@/components/ui/progress";
+import { useNavigate } from "react-router-dom";
 
 type Tier = "normal" | "basic" | "pro" | "vip";
 
@@ -30,6 +31,7 @@ const TIER_LABEL: Record<Tier, string> = {
 const Products = () => {
   const { user, profile, refreshProfile } = useAuth();
   const { t } = useLanguage();
+  const navigate = useNavigate();
 
   const [products, setProducts] = useState<any[]>([]);
   const [tier, setTier] = useState<Tier>("normal");
@@ -47,6 +49,8 @@ const Products = () => {
   const [genProgress, setGenProgress] = useState(0);
   const [genTimer, setGenTimer] = useState(3);
   const [deliveredKeys, setDeliveredKeys] = useState<string[]>([]);
+  const [bonusKeys, setBonusKeys] = useState<string[]>([]);
+  const [bonusNote, setBonusNote] = useState<string>("");
 
   const fetchAll = async () => {
     const [{ data: prods }, app] = await Promise.all([
@@ -71,12 +75,15 @@ const Products = () => {
     fetchAll();
   }, [user?.id]);
 
-  // Compute price for a product+duration based on tier
+  // Compute price for a product+duration based on tier.
+  // Order: tier_prices[currentTier][d] → tier_prices.normal[d] → duration_prices[d] → price_points
   const priceFor = (product: any, d: number): number => {
     const tierPrices = product.tier_prices || {};
     const durationPrices = product.duration_prices || {};
     const tp = tierPrices[tier]?.[String(d)];
     if (typeof tp === "number") return Number(tp);
+    const np = tierPrices.normal?.[String(d)];
+    if (typeof np === "number") return Number(np);
     const dp = durationPrices[String(d)];
     if (typeof dp === "number") return Number(dp);
     return Number(product.price_points || 0);
@@ -114,6 +121,8 @@ const Products = () => {
     setStep(1);
     setStocks({});
     setDeliveredKeys([]);
+    setBonusKeys([]);
+    setBonusNote("");
     setGenerating(false);
     setGenProgress(0);
     setOpen(true);
@@ -169,7 +178,15 @@ const Products = () => {
           clearInterval(interval);
           setGenerating(false);
           setDeliveredKeys(data.keys || (data.key_code ? [data.key_code] : []));
-          toast.success(`🎉 ${data.quantity || qty} key${qty > 1 ? "s" : ""} delivered!`);
+          setBonusKeys(data.bonus_keys || []);
+          setBonusNote(data.bonus_note || "");
+          if (data.bonus_keys?.length) {
+            toast.success(
+              `🎉 ${data.quantity || qty} key${qty > 1 ? "s" : ""} + 🎁 ${data.bonus_keys.length} FREE bonus key${data.bonus_keys.length > 1 ? "s" : ""}!`
+            );
+          } else {
+            toast.success(`🎉 ${data.quantity || qty} key${qty > 1 ? "s" : ""} delivered!`);
+          }
           refreshProfile();
           fetchAll();
         }
@@ -181,7 +198,7 @@ const Products = () => {
   };
 
   const copyAll = () => {
-    navigator.clipboard.writeText(deliveredKeys.join("\n"));
+    navigator.clipboard.writeText([...deliveredKeys, ...bonusKeys].join("\n"));
     toast.success("All keys copied!");
   };
 
@@ -231,9 +248,17 @@ const Products = () => {
                       {/* Header strip */}
                       <div className="flex items-center justify-between px-4 py-3 bg-card/50 border-b border-border/40">
                         <div className="flex items-center gap-2 min-w-0">
-                          <div className="w-9 h-9 rounded-lg bg-primary/15 flex items-center justify-center text-primary shrink-0">
-                            <Package className="w-4 h-4" />
-                          </div>
+                          {product.image_url ? (
+                            <img
+                              src={product.image_url}
+                              alt={product.name}
+                              className="w-9 h-9 rounded-lg object-cover shrink-0 border border-border/40"
+                            />
+                          ) : (
+                            <div className="w-9 h-9 rounded-lg bg-primary/15 flex items-center justify-center text-primary shrink-0">
+                              <Package className="w-4 h-4" />
+                            </div>
+                          )}
                           <div className="min-w-0">
                             <h3 className="font-bold text-sm truncate">{product.name}</h3>
                             <div className="flex items-center gap-1 text-[11px] text-success">
@@ -431,22 +456,37 @@ const Products = () => {
                     />
                   </div>
 
-                  <div className="flex gap-2">
-                    <Button variant="outline" className="flex-1" onClick={() => setStep(1)}>
-                      Back
-                    </Button>
-                    <Button
-                      className="flex-1 font-semibold"
-                      onClick={handlePurchase}
-                      disabled={
-                        purchasing ||
-                        (profile?.wallet_points ?? 0) < totalPrice ||
-                        stockForDuration < qty
-                      }
-                    >
-                      {purchasing ? "Processing..." : `Pay $${totalPrice.toFixed(2)}`}
-                    </Button>
-                  </div>
+                  {(profile?.wallet_points ?? 0) < totalPrice ? (
+                    <div className="space-y-2">
+                      <div className="rounded-lg bg-destructive/10 border border-destructive/30 p-3 text-xs text-destructive">
+                        ⚠️ Insufficient balance — you need <b>${(totalPrice - (profile?.wallet_points ?? 0)).toFixed(2)}</b> more.
+                      </div>
+                      <div className="flex gap-2">
+                        <Button variant="outline" className="flex-1" onClick={() => setStep(1)}>
+                          Back
+                        </Button>
+                        <Button
+                          className="flex-1 font-semibold bg-gradient-to-r from-success to-success/80 text-success-foreground"
+                          onClick={() => { closeBuy(); navigate("/buy-credit"); }}
+                        >
+                          <Wallet className="w-4 h-4 mr-2" /> Add Balance
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex gap-2">
+                      <Button variant="outline" className="flex-1" onClick={() => setStep(1)}>
+                        Back
+                      </Button>
+                      <Button
+                        className="flex-1 font-semibold"
+                        onClick={handlePurchase}
+                        disabled={purchasing || stockForDuration < qty}
+                      >
+                        {purchasing ? "Processing..." : `Pay $${totalPrice.toFixed(2)}`}
+                      </Button>
+                    </div>
+                  )}
                 </motion.div>
               )}
 
@@ -489,6 +529,30 @@ const Products = () => {
                           </div>
                         ))}
                       </div>
+
+                      {bonusKeys.length > 0 && (
+                        <motion.div
+                          initial={{ opacity: 0, scale: 0.9 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          className="rounded-lg border-2 border-yellow-500/40 bg-gradient-to-br from-yellow-500/10 via-orange-500/5 to-yellow-500/10 p-3 space-y-2"
+                        >
+                          <div className="flex items-center gap-2 text-yellow-400 font-bold text-sm">
+                            <Gift className="w-4 h-4" />
+                            🎉 You bought {deliveredKeys.length} keys and got {bonusKeys.length} FREE bonus!
+                          </div>
+                          <div className="max-h-32 overflow-y-auto space-y-1.5">
+                            {bonusKeys.map((k, i) => (
+                              <div
+                                key={i}
+                                className="font-mono text-xs break-all select-all bg-background/60 px-2 py-1.5 rounded border border-yellow-500/30"
+                              >
+                                🎁 {k}
+                              </div>
+                            ))}
+                          </div>
+                        </motion.div>
+                      )}
+
                       {selected?.file_url && (
                         <a href={selected.file_url} target="_blank" rel="noopener noreferrer">
                           <Button variant="outline" className="w-full">

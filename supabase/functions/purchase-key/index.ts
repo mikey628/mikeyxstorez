@@ -75,7 +75,7 @@ Deno.serve(async (req) => {
       return json({ error: `Insufficient balance. Need $${totalPrice}, have $${profile.wallet_points}` }, 400);
     }
 
-    // Find available keys matching duration
+    // Find available paid keys matching duration
     const { data: availableKeys } = await adminClient
       .from("keys")
       .select("*")
@@ -90,7 +90,7 @@ Deno.serve(async (req) => {
       }, 400);
     }
 
-    // Claim them
+    // Claim paid keys
     const claimedIds: string[] = [];
     const claimedCodes: string[] = [];
     for (const k of availableKeys) {
@@ -116,22 +116,81 @@ Deno.serve(async (req) => {
 
     const actualTotal = unitPrice * claimedCodes.length;
 
-    // Deduct balance + bump purchases
+    // ---- BONUS RULES (buy N → get M free) ----
+    // Pick the BEST matching active rule (highest min_keys ≤ paid quantity).
+    // Rule with product_id matching wins over a global (NULL product_id) rule.
+    let bonusKeys: string[] = [];
+    let bonusKeyIds: string[] = [];
+    let bonusNote = "";
+    try {
+      const { data: rules } = await adminClient
+        .from("bonus_rules")
+        .select("*")
+        .eq("is_active", true)
+        .or(`product_id.eq.${product_id},product_id.is.null`)
+        .lte("min_keys", claimedCodes.length)
+        .order("min_keys", { ascending: false });
+
+      if (rules && rules.length > 0) {
+        // Prefer product-specific rule
+        const chosen =
+          rules.find((r: any) => r.product_id === product_id) ?? rules[0];
+        const freeQty = Number(chosen.free_keys || 0);
+
+        if (freeQty > 0) {
+          const { data: bonusAvailable } = await adminClient
+            .from("keys")
+            .select("*")
+            .eq("product_id", product_id)
+            .eq("is_used", false)
+            .eq("duration_days", duration_days)
+            .limit(freeQty);
+
+          if (bonusAvailable && bonusAvailable.length > 0) {
+            for (const bk of bonusAvailable) {
+              const { error: bErr } = await adminClient
+                .from("keys")
+                .update({
+                  is_used: true,
+                  used_by: user.id,
+                  used_at: new Date().toISOString(),
+                  duration_days,
+                })
+                .eq("id", bk.id)
+                .eq("is_used", false);
+              if (!bErr) {
+                bonusKeyIds.push(bk.id);
+                bonusKeys.push(bk.key_code);
+              }
+            }
+            if (bonusKeys.length > 0) {
+              bonusNote = `🎁 Bonus: bought ${claimedCodes.length} → got ${bonusKeys.length} free`;
+            }
+          }
+        }
+      }
+    } catch (_) {
+      // Bonus rule failure should not block purchase
+    }
+
+    const totalDeliveredCount = claimedCodes.length + bonusKeys.length;
+
+    // Deduct balance + bump purchases (only paid count → user pays for paid keys only)
     await adminClient
       .from("profiles")
       .update({
         wallet_points: Number(profile.wallet_points) - actualTotal,
-        total_purchases: (profile.total_purchases || 0) + claimedCodes.length,
+        total_purchases: (profile.total_purchases || 0) + totalDeliveredCount,
       })
       .eq("user_id", user.id);
 
-    // Reduce stock
+    // Reduce stock by total delivered (paid + bonus)
     await adminClient
       .from("products")
-      .update({ stock: Math.max(0, (product.stock || 0) - claimedCodes.length) })
+      .update({ stock: Math.max(0, (product.stock || 0) - totalDeliveredCount) })
       .eq("id", product_id);
 
-    // Log transactions
+    // Log paid transactions
     const txRows = claimedIds.map((kid) => ({
       user_id: user.id,
       type: "purchase",
@@ -140,6 +199,17 @@ Deno.serve(async (req) => {
       product_id,
       key_id: kid,
     }));
+    // Log bonus transactions (amount 0)
+    for (const bid of bonusKeyIds) {
+      txRows.push({
+        user_id: user.id,
+        type: "bonus",
+        amount: 0,
+        description: `🎁 Free bonus key — ${product.name} (${duration_days}d)`,
+        product_id,
+        key_id: bid,
+      });
+    }
     if (txRows.length) await adminClient.from("transactions").insert(txRows);
 
     return json({
@@ -149,6 +219,8 @@ Deno.serve(async (req) => {
       total_price: actualTotal,
       quantity: claimedCodes.length,
       keys: claimedCodes,
+      bonus_keys: bonusKeys,
+      bonus_note: bonusNote,
       // backward-compat
       key_code: claimedCodes[0],
     });
