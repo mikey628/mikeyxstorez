@@ -456,22 +456,37 @@ const Products = () => {
                     />
                   </div>
 
-                  <div className="flex gap-2">
-                    <Button variant="outline" className="flex-1" onClick={() => setStep(1)}>
-                      Back
-                    </Button>
-                    <Button
-                      className="flex-1 font-semibold"
-                      onClick={handlePurchase}
-                      disabled={
-                        purchasing ||
-                        (profile?.wallet_points ?? 0) < totalPrice ||
-                        stockForDuration < qty
-                      }
-                    >
-                      {purchasing ? "Processing..." : `Pay $${totalPrice.toFixed(2)}`}
-                    </Button>
-                  </div>
+                  {(profile?.wallet_points ?? 0) < totalPrice ? (
+                    <div className="space-y-2">
+                      <div className="rounded-lg bg-destructive/10 border border-destructive/30 p-3 text-xs text-destructive">
+                        ⚠️ Insufficient balance — you need <b>${(totalPrice - (profile?.wallet_points ?? 0)).toFixed(2)}</b> more.
+                      </div>
+                      <div className="flex gap-2">
+                        <Button variant="outline" className="flex-1" onClick={() => setStep(1)}>
+                          Back
+                        </Button>
+                        <Button
+                          className="flex-1 font-semibold bg-gradient-to-r from-success to-success/80 text-success-foreground"
+                          onClick={() => { closeBuy(); navigate("/buy-credit"); }}
+                        >
+                          <Wallet className="w-4 h-4 mr-2" /> Add Balance
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex gap-2">
+                      <Button variant="outline" className="flex-1" onClick={() => setStep(1)}>
+                        Back
+                      </Button>
+                      <Button
+                        className="flex-1 font-semibold"
+                        onClick={handlePurchase}
+                        disabled={purchasing || stockForDuration < qty}
+                      >
+                        {purchasing ? "Processing..." : `Pay $${totalPrice.toFixed(2)}`}
+                      </Button>
+                    </div>
+                  )}
                 </motion.div>
               )}
 
