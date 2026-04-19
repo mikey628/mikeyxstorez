@@ -11,8 +11,10 @@ import {
 import { toast } from "sonner";
 import { Plus, Trash2, Edit, CreditCard, Upload, Power } from "lucide-react";
 
-const TIERS = ["basic", "pro", "vip"] as const;
+const TIERS = ["normal", "basic", "pro", "vip"] as const;
 type Tier = typeof TIERS[number];
+const RESELLER_TIERS = ["basic", "pro", "vip"] as const;
+type ResellerTier = typeof RESELLER_TIERS[number];
 
 /* ---------- Tier Pricing Editor (per product) ---------- */
 export const AdminTierPrices = ({
@@ -24,14 +26,14 @@ export const AdminTierPrices = ({
 }) => {
   const [openProd, setOpenProd] = useState<any>(null);
   const [tierPrices, setTierPrices] = useState<Record<Tier, Record<string, string>>>({
-    basic: {}, pro: {}, vip: {},
+    normal: {}, basic: {}, pro: {}, vip: {},
   });
   const [saving, setSaving] = useState(false);
 
   const open = (p: any) => {
     setOpenProd(p);
     const tp = (p.tier_prices || {}) as any;
-    const initial: any = { basic: {}, pro: {}, vip: {} };
+    const initial: any = { normal: {}, basic: {}, pro: {}, vip: {} };
     TIERS.forEach((t) => {
       const obj = tp[t] || {};
       Object.keys(obj).forEach((k) => {
@@ -74,7 +76,7 @@ export const AdminTierPrices = ({
             <CreditCard className="w-4 h-4 text-primary" /> Reseller Tier Pricing
           </h3>
           <p className="text-xs text-muted-foreground">
-            Set discounted prices for Basic / Pro / VIP resellers per product. Empty = falls back to normal price.
+            Set per-product prices for Normal users and Basic / Pro / VIP resellers, per duration.
           </p>
           {products.map((p) => {
             const tp = (p.tier_prices || {}) as any;
@@ -87,11 +89,11 @@ export const AdminTierPrices = ({
                 <div>
                   <p className="font-medium text-sm">{p.name}</p>
                   <p className="text-[11px] text-muted-foreground">
-                    Basic: {counts[0]} · Pro: {counts[1]} · VIP: {counts[2]}
+                    Normal: {counts[0]} · Basic: {counts[1]} · Pro: {counts[2]} · VIP: {counts[3]}
                   </p>
                 </div>
                 <Button size="sm" variant="outline" onClick={() => open(p)}>
-                  <Edit className="w-3 h-3 mr-1" /> Edit Tiers
+                  <Edit className="w-3 h-3 mr-1" /> Edit Prices
                 </Button>
               </div>
             );
