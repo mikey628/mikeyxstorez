@@ -23,7 +23,7 @@ import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { motion } from "framer-motion";
 import { Progress } from "@/components/ui/progress";
 import { ThemeSettings as ThemeSettingsComponent } from "@/components/ThemeSettings";
-import { AdminTierPrices, AdminPaymentMethods, AdminTopupToggle, ResellerTierSelect } from "@/components/AdminTierExtras";
+import { AdminTierPrices, AdminPaymentMethods, AdminTopupToggle, ResellerTierSelect, AdminBonusRules, AdminResellerBenefits } from "@/components/AdminTierExtras";
 
 const Admin = () => {
   const { isAdmin, loading } = useAuth();
