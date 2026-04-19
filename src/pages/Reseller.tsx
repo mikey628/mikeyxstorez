@@ -32,12 +32,15 @@ const Reseller = () => {
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({ seller_name: "", whatsapp: "", tiktok_channel: "", avg_followers: "" });
   const [applicationFee, setApplicationFee] = useState<number>(0);
+  const [benefitsText, setBenefitsText] = useState<string>("");
 
   const isApproved = application?.status === "approved";
 
   useEffect(() => {
     fetchApplication();
     fetchFee();
+    supabase.from("site_settings").select("value").eq("key", "reseller_benefits_text").maybeSingle()
+      .then(({ data }) => setBenefitsText(data?.value || ""));
   }, [user]);
 
   const fetchApplication = async () => {
