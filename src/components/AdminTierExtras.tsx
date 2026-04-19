@@ -110,13 +110,15 @@ export const AdminTierPrices = ({
             {(openProd?.duration_days || [30]).map((d: number) => (
               <div key={d} className="border border-border/40 rounded-lg p-3 space-y-2">
                 <p className="text-xs font-semibold text-muted-foreground">
-                  {d} day{d > 1 && "s"} — Normal: $
+                  {d} day{d > 1 && "s"} — Legacy fallback: $
                   {openProd?.duration_prices?.[String(d)] ?? openProd?.price_points ?? 0}
                 </p>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   {TIERS.map((t) => (
                     <div key={t}>
-                      <label className="text-[10px] uppercase text-muted-foreground">{t}</label>
+                      <label className={`text-[10px] uppercase font-bold ${t === "normal" ? "text-foreground" : "text-primary"}`}>
+                        {t}
+                      </label>
                       <Input
                         type="number"
                         step="0.01"
