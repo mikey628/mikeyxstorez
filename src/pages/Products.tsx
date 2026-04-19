@@ -12,11 +12,12 @@ import {
 import { toast } from "sonner";
 import {
   Package, ShoppingCart, FileDown, Loader2, Lock, Minus, Plus,
-  ShieldCheck, Tag, ArrowRight, CheckCircle2, Crown, Copy,
+  ShieldCheck, Tag, ArrowRight, CheckCircle2, Crown, Copy, Wallet, Gift,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { Progress } from "@/components/ui/progress";
+import { useNavigate } from "react-router-dom";
 
 type Tier = "normal" | "basic" | "pro" | "vip";
 
@@ -30,6 +31,7 @@ const TIER_LABEL: Record<Tier, string> = {
 const Products = () => {
   const { user, profile, refreshProfile } = useAuth();
   const { t } = useLanguage();
+  const navigate = useNavigate();
 
   const [products, setProducts] = useState<any[]>([]);
   const [tier, setTier] = useState<Tier>("normal");
@@ -47,6 +49,8 @@ const Products = () => {
   const [genProgress, setGenProgress] = useState(0);
   const [genTimer, setGenTimer] = useState(3);
   const [deliveredKeys, setDeliveredKeys] = useState<string[]>([]);
+  const [bonusKeys, setBonusKeys] = useState<string[]>([]);
+  const [bonusNote, setBonusNote] = useState<string>("");
 
   const fetchAll = async () => {
     const [{ data: prods }, app] = await Promise.all([
