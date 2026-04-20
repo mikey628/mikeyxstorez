@@ -1347,6 +1347,9 @@ const Admin = () => {
                             <p className="font-medium">{reqUser?.email || req.user_id}</p>
                             <p className="text-primary font-bold">${req.package_amount} Credits</p>
                             <p className="text-xs text-muted-foreground">Paid: ${req.amount_paid} · {req.payment_method}</p>
+                            {req.transaction_code && (
+                              <p className="text-xs text-muted-foreground">Txn Code: {req.transaction_code}</p>
+                            )}
                             <p className="text-[10px] text-muted-foreground">{new Date(req.created_at).toLocaleString()}</p>
                           </div>
                           <div className="flex flex-col items-end gap-1">

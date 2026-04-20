@@ -53,19 +53,21 @@ const Products = () => {
   const [bonusNote, setBonusNote] = useState<string>("");
 
   const fetchAll = async () => {
-    const [{ data: prods }, app] = await Promise.all([
+    const [{ data: prods }, apps] = await Promise.all([
       supabase.from("products").select("*").order("created_at"),
       user
         ? supabase
             .from("reseller_applications")
-            .select("status, reseller_tier")
+            .select("status, reseller_tier, updated_at, created_at")
             .eq("user_id", user.id)
-            .maybeSingle()
+            .order("updated_at", { ascending: false })
+            .order("created_at", { ascending: false })
         : Promise.resolve({ data: null } as any),
     ]);
     setProducts(prods || []);
-    if (app?.data && app.data.status === "approved") {
-      setTier((app.data.reseller_tier as Tier) || "basic");
+    const approvedApp = apps?.data?.find((app: any) => app.status === "approved");
+    if (approvedApp) {
+      setTier((approvedApp.reseller_tier as Tier) || "basic");
     } else {
       setTier("normal");
     }
