@@ -23,6 +23,7 @@ const BuyCredit = () => {
   const [selectedMethod, setSelectedMethod] = useState<any>(null);
   const [proofFile, setProofFile] = useState<File | null>(null);
   const [proofPreview, setProofPreview] = useState<string | null>(null);
+  const [transactionCode, setTransactionCode] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [fakeWarning, setFakeWarning] = useState(false);
@@ -70,6 +71,7 @@ const BuyCredit = () => {
     if (amt > 5000) return toast.error("Max $5,000 per request");
     if (!selectedMethod) return toast.error("Select a payment method");
     if (!proofFile) return toast.error("Upload payment proof");
+    if (!transactionCode.trim()) return toast.error("Enter transaction code");
     if (!user) return toast.error("Sign in first");
 
     setSubmitting(true);
@@ -87,6 +89,7 @@ const BuyCredit = () => {
         amount_paid: amt,
         payment_method: selectedMethod.name,
         payment_proof_url: path,
+        transaction_code: transactionCode.trim(),
         status: "pending",
       });
       if (error) throw error;
@@ -104,6 +107,7 @@ const BuyCredit = () => {
     setAmount("");
     setProofFile(null);
     setProofPreview(null);
+    setTransactionCode("");
     setFakeWarning(false);
   };
 
@@ -122,6 +126,9 @@ const BuyCredit = () => {
           <h1 className="text-2xl font-bold">Request Submitted!</h1>
           <p className="text-muted-foreground text-sm">
             Your <span className="text-success font-bold">${amount}</span> will be added after admin approval.
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Transaction code: <span className="font-semibold text-foreground">{transactionCode}</span>
           </p>
           <Button onClick={reset} className="w-full">Add More Balance</Button>
         </div>
@@ -280,6 +287,21 @@ const BuyCredit = () => {
                   <AlertTriangle className="w-4 h-4 shrink-0" /> Upload a real payment screenshot.
                 </div>
               )}
+
+              <div className="space-y-2 pt-2">
+                <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Transaction Code
+                </label>
+                <Input
+                  value={transactionCode}
+                  onChange={(e) => setTransactionCode(e.target.value)}
+                  placeholder="Enter payment transaction code"
+                  className="h-11"
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  Pay first, then paste your transaction code, then confirm.
+                </p>
+              </div>
             </CardContent>
           </Card>
         )}
@@ -287,9 +309,9 @@ const BuyCredit = () => {
         <Button
           className="w-full h-12 text-base font-bold shadow-lg shadow-primary/30"
           onClick={handleSubmit}
-          disabled={submitting || !amount || !selectedMethod || !proofFile}
+          disabled={submitting || !amount || !selectedMethod || !proofFile || !transactionCode.trim()}
         >
-          <Plus className="w-5 h-5 mr-2" /> Add Balance
+          <Plus className="w-5 h-5 mr-2" /> Confirm Balance Request
         </Button>
 
         <p className="text-center text-xs text-muted-foreground">
@@ -311,6 +333,7 @@ const BuyCredit = () => {
                   <div>
                     <span className="text-success font-bold">${r.amount_paid}</span>
                     <span className="text-muted-foreground ml-2">{r.payment_method}</span>
+                    {r.transaction_code && <span className="text-muted-foreground ml-2">• Code: {r.transaction_code}</span>}
                   </div>
                   <Badge
                     variant={

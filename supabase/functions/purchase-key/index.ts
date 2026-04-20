@@ -53,13 +53,15 @@ Deno.serve(async (req) => {
     if (!product) return json({ error: "Product not found" }, 404);
 
     // Determine tier — approved reseller's tier or "normal"
-    const { data: app } = await adminClient
+    const { data: apps } = await adminClient
       .from("reseller_applications")
-      .select("status, reseller_tier")
+      .select("status, reseller_tier, updated_at, created_at")
       .eq("user_id", user.id)
-      .maybeSingle();
+      .order("updated_at", { ascending: false })
+      .order("created_at", { ascending: false });
+    const approvedApp = apps?.find((item) => item.status === "approved");
     const tier =
-      app && app.status === "approved" ? (app.reseller_tier || "basic") : "normal";
+      approvedApp ? (approvedApp.reseller_tier || "basic") : "normal";
 
     // Resolve unit price: tier_prices[tier][duration] → duration_prices[duration] → price_points
     const tierPrices = (product.tier_prices || {}) as Record<string, Record<string, number>>;
